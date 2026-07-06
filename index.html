@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Elbert County Land Ownership Explorer</title>
+
+<!-- Leaflet map library (loaded from a public CDN; needs internet) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+  :root { --bg:#0f1720; --panel:#16212e; --line:#25323f; --text:#e7edf3; --muted:#8fa3b3;
+          --accent:#4fd1c5; --accent2:#f6ad55; --bar:#2b3a4a; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
+              background:var(--bg); color:var(--text); }
+  #app { display:grid; grid-template-columns:430px 1fr; height:100vh; }
+  #side { border-right:1px solid var(--line); display:flex; flex-direction:column; min-width:0; }
+  header { padding:14px 16px; border-bottom:1px solid var(--line); }
+  header h1 { margin:0 0 2px; font-size:16px; }
+  header p { margin:0; color:var(--muted); font-size:12px; }
+  .controls { padding:12px 16px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:10px; }
+  button { background:var(--accent); color:#062b28; border:0; padding:9px 12px; border-radius:8px;
+           font-weight:600; cursor:pointer; font-size:13px; }
+  button:disabled { opacity:.5; cursor:default; }
+  button.ghost { background:var(--bar); color:var(--text); padding:4px 10px; font-size:11px; }
+  input, select { background:var(--panel); color:var(--text); border:1px solid var(--line);
+                  border-radius:8px; padding:8px 10px; font-size:13px; width:100%; }
+  .row { display:flex; gap:8px; align-items:center; }
+  .row > * { flex:1; }
+  label.small { color:var(--muted); font-size:11px; }
+  #progress { height:6px; background:var(--bar); border-radius:4px; overflow:hidden; display:none; }
+  #progress > div { height:100%; width:0; background:var(--accent); transition:width .2s; }
+  #summary { padding:10px 16px; border-bottom:1px solid var(--line); font-size:12px; color:var(--muted);
+             display:none; gap:14px; flex-wrap:wrap; }
+  #summary b { color:var(--text); font-size:14px; display:block; }
+
+  /* --- ownership-class visualization --- */
+  #viz { padding:10px 16px 12px; border-bottom:1px solid var(--line); display:none; }
+  #viz h2 { margin:0 0 8px; font-size:12px; color:var(--muted); font-weight:600;
+            text-transform:uppercase; letter-spacing:.05em; }
+  .stackrow { margin-bottom:8px; }
+  .stackrow .lbl { font-size:11px; color:var(--muted); margin-bottom:3px; }
+  .stack { display:flex; height:16px; border-radius:5px; overflow:hidden; background:var(--bar); }
+  .stack > div { height:100%; min-width:0; }
+  .legend { display:flex; flex-direction:column; gap:2px; margin-top:8px; }
+  .legend .cat { display:flex; align-items:center; gap:8px; font-size:11.5px; padding:3px 6px;
+                 border-radius:6px; cursor:pointer; }
+  .legend .cat:hover { background:var(--panel); }
+  .legend .cat.dim { opacity:.45; }
+  .legend .dot { width:10px; height:10px; border-radius:3px; flex:none; }
+  .legend .nm { flex:1; }
+  .legend .num { color:var(--muted); font-variant-numeric:tabular-nums; }
+
+  #list { overflow:auto; flex:1; }
+  .owner { padding:10px 16px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .owner:hover { background:var(--panel); }
+  .owner.active { background:#1d2f3a; }
+  .owner .name { font-weight:600; font-size:13px; display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+  .owner .rank { color:var(--muted); font-weight:700; margin-right:6px; }
+  .owner .seldot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; }
+  .owner .meta { color:var(--muted); font-size:11px; margin-top:4px; display:flex; gap:12px; flex-wrap:wrap; }
+  .owner .meta b { color:var(--accent2); font-weight:600; }
+  .tag { font-size:10px; background:var(--bar); color:var(--muted); border-radius:6px; padding:1px 6px; }
+  #main { position:relative; }
+  #map { position:absolute; inset:0; }
+  #detail { position:absolute; left:12px; top:12px; z-index:500; background:rgba(16,26,36,.94);
+            border:1px solid var(--line); border-radius:10px; padding:12px 14px; max-width:360px;
+            font-size:12px; display:none; max-height:70vh; overflow:auto; }
+  #detail h3 { margin:0 0 6px; font-size:14px; display:flex; justify-content:space-between; gap:10px; }
+  #detail .k { color:var(--muted); }
+  #detail .selrow { display:flex; align-items:center; gap:8px; padding:4px 0; border-top:1px solid var(--line); }
+  #detail .selrow:first-of-type { border-top:0; }
+  #detail .selrow .dot { width:10px; height:10px; border-radius:50%; flex:none; }
+  #detail .selrow .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #detail .selrow .rm { cursor:pointer; color:var(--muted); font-weight:700; padding:0 4px; }
+  #detail .selrow .rm:hover { color:#fc8181; }
+  #detail .variants { margin-top:6px; color:var(--muted); font-size:11px; }
+  .hint { color:var(--muted); font-size:12px; padding:16px; line-height:1.5; }
+  .err { color:#fc8181; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="side">
+    <header>
+      <h1>Elbert County Land Ownership Explorer</h1>
+      <p>Live data from the county Assessor's public GIS (maps.elbertcounty-co.gov)</p>
+    </header>
+
+    <div class="controls">
+      <button id="load">Load parcel data</button>
+      <div id="progress"><div></div></div>
+      <input id="search" placeholder="Filter owners (e.g. cattle, ranch, silver spur)…" disabled />
+      <div class="row">
+        <div>
+          <label class="small">Sort by</label>
+          <select id="sort" disabled>
+            <option value="acres">Total acreage</option>
+            <option value="value">Total actual value</option>
+            <option value="parcels">Number of parcels</option>
+          </select>
+        </div>
+        <div>
+          <label class="small">Ownership class</label>
+          <select id="filterCat" disabled>
+            <option value="all">All classes</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="summary"></div>
+    <div id="viz"></div>
+    <div id="list"><div class="hint">Click <b>Load parcel data</b> to pull all ~17,800 parcels
+      from the county API. Owners are ranked by land held and classified as private, corporate,
+      government, etc. Click owners to highlight them on the map — <b>click several to compare
+      side by side</b>, each in its own color.</div></div>
+  </div>
+
+  <div id="main">
+    <div id="map"></div>
+    <div id="detail"></div>
+  </div>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Data source: Elbert County "Tax Parcels" ArcGIS layer (id 14).
+// It exposes a standard ArcGIS REST /query endpoint that returns JSON.
+// We POST queries (POST avoids URL-length limits on long "IN (...)" clauses).
+// ---------------------------------------------------------------------------
+const LAYER = "https://maps.elbertcounty-co.gov/data/rest/services/" +
+              "Tax_Parcels_of_Elbert_County_Colorado/MapServer/14/query";
+const PAGE = 2000; // server maxRecordCount
+
+// --- ownership classes ------------------------------------------------------
+// Order matters: first match wins. Colors are used in bars, legend and map.
+const CATS = [
+  { id:"gov",  name:"Government / Public",   color:"#63b3ed" },
+  { id:"com",  name:"Community / Nonprofit", color:"#b794f4" },
+  { id:"biz",  name:"Business / Corporate",  color:"#f6ad55" },
+  { id:"ind",  name:"Individual / Family",   color:"#68d391" },
+  { id:"unk",  name:"Unknown / Unlisted",    color:"#718096" },
+];
+const CAT_BY_ID = Object.fromEntries(CATS.map(c => [c.id, c]));
+
+const GOV_RE = /SCHOOL|DISTRICT|COUNTY|STATE OF COLORADO|LAND BOARD|TOWN OF|CITY OF|METRO WATER|METROPOLITAN|UNITED STATES|FEDERAL|BUILDING AUTHORITY|COMMISSIONERS|DEPARTMENT|BOARD OF|BUREAU|POSTAL/;
+const COM_RE = /HOMEOWNERS|HOME OWNERS|OWNERS ASSOC|ASSOCIATION|\bHOA\b|CHURCH|CEMETERY|FOUNDATION|BOY SCOUTS|MINISTR|PARISH|CONGREGATION|CLUB\b|LODGE\b/;
+const BIZ_RE = /\bLLC\b|\bL L C\b|\bINC\b|\bCORP\b|\bLTD\b|\bLLLP\b|\bLLP\b|\bLP\b|\bRLLLP\b|COMPANY|\bCO\b|HOLDINGS|PROPERTIES|ENTERPRISES|PARTNERSHIP|INVESTMENTS|VENTURES|FARMS\b|RANCHES\b|BANK\b|STORES\b|HOMES\b/;
+
+// Strict corporate suffixes: an LLC/Inc is a business even if its name contains
+// words like COUNTY or SCHOOL (e.g. "10645 COUNTY ROAD 94 LLC").
+const BIZ_SUFFIX_RE = /\bLLC\b|\bL L C\b|\bINC\b|\bCORP\b|\bLTD\b|\bLLLP\b|\bLLP\b|\bRLLLP\b|\bLP\b|BUSINESS TRUST/;
+
+function categorize(name) {
+  if (!name || !name.trim()) return "unk";
+  const u = " " + name.toUpperCase().replace(/[.,]/g, " ").replace(/\s+/g, " ").trim() + " ";
+  if (COM_RE.test(u)) return "com";        // churches/HOAs first, even if incorporated
+  if (BIZ_SUFFIX_RE.test(u)) return "biz"; // corporate suffix trumps gov-sounding words
+  if (GOV_RE.test(u)) return "gov";
+  if (BIZ_RE.test(u)) return "biz";
+  return "ind"; // personal names, family/living trusts, estates
+}
+
+// Distinct highlight colors handed out to selected owners, in order.
+const SEL_COLORS = ["#f6ad55","#63b3ed","#f687b3","#68d391","#b794f4","#fc8181",
+                    "#4fd1c5","#fbd38d","#90cdf4","#9ae6b4"];
+
+let allParcels = [];        // raw records from the API
+let groups = [];            // owners after grouping name variants
+let catTotals = null;       // per-class aggregates for the viz
+let hiddenCats = new Set(); // classes dimmed via legend click
+const selection = new Map();// group.key -> {g, color, layer}
+
+// --- tiny helpers ----------------------------------------------------------
+const $ = s => document.querySelector(s);
+const money = n => "$" + Math.round(n).toLocaleString();
+const acres = n => n.toLocaleString(undefined,{maximumFractionDigits:0}) + " ac";
+
+async function postQuery(params) {
+  const body = new URLSearchParams({ f:"json", ...params });
+  const res = await fetch(LAYER, { method:"POST", body });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const json = await res.json();
+  if (json.error) throw new Error(json.error.message || "API error");
+  return json;
+}
+
+// Collapse spelling variants of the same owner to one key.
+// e.g. "HARMONY LAND & CATTLE LLC", "HARMONY LAND AND CATTLE COMPANY LLC",
+//      "HARMONY LAND AND CATTLE, LLC"  ->  "HARMONY LAND AND CATTLE"
+const SUFFIX = new Set(["LLC","LLLP","LLP","LP","INC","LTD","CO","COMPANY","CORP","INCORPORATED"]);
+function normalizeOwner(name) {
+  if (!name || !name.trim()) return "__UNKNOWN__";
+  let s = name.toUpperCase().replace(/&/g," AND ").replace(/[.,]/g," ").replace(/\s+/g," ").trim();
+  let t = s.split(" ");
+  while (t.length > 1 && SUFFIX.has(t[t.length-1])) t.pop();
+  return t.join(" ");
+}
+
+// --- load every parcel (attributes only, no geometry = fast/light) ---------
+async function loadAll() {
+  $("#load").disabled = true;
+  $("#progress").style.display = "block";
+  const total = 17833; // known count; used only for the progress bar
+  allParcels = [];
+  let offset = 0;
+  try {
+    while (true) {
+      const json = await postQuery({
+        where: "1=1",
+        outFields: "objectid,owner1,careof,statedarea,ttlactval,proptype,ownaddress,owncity,ownstate",
+        returnGeometry: "false",
+        orderByFields: "objectid",
+        resultOffset: offset,
+        resultRecordCount: PAGE
+      });
+      const feats = json.features || [];
+      feats.forEach(f => allParcels.push(f.attributes));
+      offset += feats.length;
+      $("#progress > div").style.width = Math.min(100, offset/total*100) + "%";
+      if (feats.length < PAGE || !json.exceededTransferLimit) break;
+    }
+    buildGroups();
+    $("#progress").style.display = "none";
+    ["search","sort","filterCat"].forEach(id => $("#"+id).disabled = false);
+  } catch (e) {
+    $("#list").innerHTML = '<div class="hint err">Could not load data: ' + e.message +
+      '<br><br>If you opened this file directly and it fails, try serving it locally ' +
+      '(e.g. <code>python -m http.server</code>) or open in Chrome/Edge.</div>';
+    $("#load").disabled = false;
+    $("#progress").style.display = "none";
+  }
+}
+
+// --- group parcels by owner ------------------------------------------------
+function buildGroups() {
+  const map = new Map();
+  for (const p of allParcels) {
+    const key = normalizeOwner(p.owner1);
+    let g = map.get(key);
+    if (!g) {
+      g = { key, display:"", rawCounts:new Map(), careofs:new Map(), parcels:0, acres:0, value:0,
+            oids:[], mail:"", cat:"unk", geo:null };
+      map.set(key, g);
+    }
+    const raw = (p.owner1 || "(no owner listed)").trim();
+    g.rawCounts.set(raw, (g.rawCounts.get(raw)||0) + 1);
+    // "care of" often names the real operator (e.g. C/O SILVER SPUR OPERATING COMPANY)
+    const co = (p.careof || "").replace(/^C\/O\s*/i,"").trim();
+    if (co) g.careofs.set(co, (g.careofs.get(co)||0) + 1);
+    g.parcels++;
+    g.acres += parseFloat(p.statedarea) || 0;
+    g.value += p.ttlactval || 0;
+    g.oids.push(p.objectid);
+    if (!g.mail && p.ownaddress)
+      g.mail = [p.ownaddress, p.owncity, p.ownstate].filter(Boolean).join(", ");
+  }
+  // pick the most common raw spelling as the display name, then classify
+  for (const g of map.values()) {
+    let best="", n=-1;
+    for (const [raw,c] of g.rawCounts) if (c>n) { n=c; best=raw; }
+    g.display = best;
+    g.cat = g.key === "__UNKNOWN__" ? "unk" : categorize(best);
+  }
+  groups = [...map.values()];
+
+  // per-class aggregates for the visualization (whole county, not filtered)
+  catTotals = {};
+  for (const c of CATS) catTotals[c.id] = { owners:0, parcels:0, acres:0, value:0 };
+  for (const g of groups) {
+    const t = catTotals[g.cat];
+    t.owners++; t.parcels += g.parcels; t.acres += g.acres; t.value += g.value;
+  }
+
+  // fill the ownership-class dropdown (force "all" — browsers may restore old form state)
+  const sel = $("#filterCat");
+  sel.innerHTML = '<option value="all">All classes</option>' +
+    CATS.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+  sel.value = "all";
+
+  renderViz();
+  render();
+}
+
+// --- ownership-class visualization ------------------------------------------
+function renderViz() {
+  const totAc = CATS.reduce((s,c)=>s+catTotals[c.id].acres,0) || 1;
+  const totVal = CATS.reduce((s,c)=>s+catTotals[c.id].value,0) || 1;
+
+  const stack = metric => {
+    const tot = metric==="acres" ? totAc : totVal;
+    return '<div class="stack">' + CATS.map(c => {
+      const v = catTotals[c.id][metric];
+      const pct = v/tot*100;
+      const dim = hiddenCats.has(c.id) ? ";opacity:.25" : "";
+      return `<div style="width:${pct}%;background:${c.color}${dim}"
+                title="${c.name}: ${pct.toFixed(1)}%"></div>`;
+    }).join("") + '</div>';
+  };
+
+  const legend = CATS.map(c => {
+    const t = catTotals[c.id];
+    return `<div class="cat ${hiddenCats.has(c.id)?"dim":""}" data-cat="${c.id}"
+              title="Click to filter the list to this class">
+       <span class="dot" style="background:${c.color}"></span>
+       <span class="nm">${c.name}</span>
+       <span class="num">${acres(t.acres)} · ${(t.acres/totAc*100).toFixed(1)}% · ${money(t.value)} · ${t.owners.toLocaleString()} owners</span>
+     </div>`;
+  }).join("");
+
+  $("#viz").style.display = "block";
+  $("#viz").innerHTML =
+    `<h2>Who owns the county</h2>
+     <div class="stackrow"><div class="lbl">Share of acreage</div>${stack("acres")}</div>
+     <div class="stackrow"><div class="lbl">Share of actual value</div>${stack("value")}</div>
+     <div class="legend">${legend}</div>`;
+
+  // legend click = filter list to that class (click again to clear)
+  document.querySelectorAll("#viz .cat").forEach(el => {
+    el.onclick = () => {
+      const id = el.dataset.cat;
+      const sel = $("#filterCat");
+      sel.value = (sel.value === id) ? "all" : id;
+      syncLegendDim();
+      render();
+    };
+  });
+  syncLegendDim();
+}
+function syncLegendDim() {
+  const v = $("#filterCat").value;
+  hiddenCats = new Set(v==="all" ? [] : CATS.filter(c=>c.id!==v).map(c=>c.id));
+  document.querySelectorAll("#viz .cat").forEach(el =>
+    el.classList.toggle("dim", hiddenCats.has(el.dataset.cat)));
+  document.querySelectorAll("#viz .stack > div").forEach((el,i) => {
+    const c = CATS[i % CATS.length];
+    el.style.opacity = hiddenCats.has(c.id) ? .25 : 1;
+  });
+}
+
+// --- render the ranked list + summary --------------------------------------
+function render() {
+  const sortKey = $("#sort").value;
+  const cat = $("#filterCat").value;
+  const q = $("#search").value.trim().toUpperCase();
+
+  let rows = groups.filter(g => {
+    if (cat !== "all" && g.cat !== cat) return false;
+    if (!q) return true;
+    if (g.display.toUpperCase().includes(q)) return true;
+    if ([...g.rawCounts.keys()].some(r => r.toUpperCase().includes(q))) return true;
+    return [...g.careofs.keys()].some(r => r.toUpperCase().includes(q));
+  });
+  rows.sort((a,b) => b[sortKey] - a[sortKey]);
+
+  // summary across the currently filtered set
+  const totAc = rows.reduce((s,g)=>s+g.acres,0);
+  const totVal = rows.reduce((s,g)=>s+g.value,0);
+  const totPar = rows.reduce((s,g)=>s+g.parcels,0);
+  const top10 = rows.slice(0,10).reduce((s,g)=>s+g.acres,0);
+  $("#summary").style.display = "flex";
+  $("#summary").innerHTML =
+    `<div><b>${rows.length.toLocaleString()}</b>distinct owners</div>` +
+    `<div><b>${totPar.toLocaleString()}</b>parcels</div>` +
+    `<div><b>${acres(totAc)}</b>total</div>` +
+    `<div><b>${money(totVal)}</b>actual value</div>` +
+    `<div><b>${totAc?Math.round(top10/totAc*100):0}%</b>held by top 10</div>`;
+
+  const list = $("#list");
+  list.innerHTML = "";
+  rows.slice(0, 400).forEach((g, i) => {
+    const div = document.createElement("div");
+    const sel = selection.get(g.key);
+    div.className = "owner" + (sel ? " active":"");
+    const catDef = CAT_BY_ID[g.cat];
+    const variants = g.rawCounts.size>1 ? `<span class="tag">${g.rawCounts.size} name variants</span>` : "";
+    const cattag = `<span class="tag" style="color:${catDef.color}">${catDef.name}</span>`;
+    // show the dominant care-of operator when most parcels carry one
+    let cotag = "";
+    if (g.careofs.size) {
+      let co="", n=-1; for (const [k,c] of g.careofs) if (c>n) { n=c; co=k; }
+      if (n >= g.parcels/2) cotag = `<span class="tag">c/o ${co}</span>`;
+    }
+    const dot = sel ? `<span class="seldot" style="background:${sel.color}"></span>` : "";
+    div.innerHTML =
+      `<div class="name"><span>${dot}<span class="rank">${i+1}.</span>${g.display}</span>
+         <span>${g.key==="__UNKNOWN__"?"":acres(g.acres)}</span></div>
+       <div class="meta"><span><b>${g.parcels}</b> parcels</span>
+         <span>${money(g.value)}</span>${cattag}${variants}${cotag}</div>`;
+    div.onclick = () => toggleOwner(g);
+    list.appendChild(div);
+  });
+  if (rows.length > 400)
+    list.insertAdjacentHTML("beforeend",
+      `<div class="hint">Showing top 400 of ${rows.length.toLocaleString()} — narrow with the filter box.</div>`);
+}
+
+// --- multiselect: toggle owners on the map ----------------------------------
+function nextColor() {
+  const used = new Set([...selection.values()].map(s => s.color));
+  return SEL_COLORS.find(c => !used.has(c)) ||
+         SEL_COLORS[selection.size % SEL_COLORS.length];
+}
+
+async function toggleOwner(g) {
+  const existing = selection.get(g.key);
+  if (existing) {                       // deselect
+    map.removeLayer(existing.layer);
+    selection.delete(g.key);
+    render(); renderDetail();
+    return;
+  }
+  const color = nextColor();
+  const entry = { g, color, layer:null, loading:true };
+  selection.set(g.key, entry);
+  render(); renderDetail();
+
+  try {
+    if (!g.geo) g.geo = await fetchOwnerGeo(g);   // cache shapes per owner
+    // user may have deselected while we were fetching
+    if (!selection.has(g.key)) return;
+    entry.layer = L.geoJSON(g.geo, {
+      style:{ color, weight:1.5, fillColor:color, fillOpacity:.35 }
+    }).bindPopup(l => {
+      const p = l.feature.properties;
+      return `<b>${p.owner1}</b><br>Acct ${p.account}<br>${p.statedarea||"?"} ac` +
+             (p.locaddress?`<br>${p.locaddress}`:"");
+    });
+    map.addLayer(entry.layer);
+    entry.loading = false;
+    fitToSelection();
+    renderDetail();
+  } catch (e) {
+    selection.delete(g.key);
+    render(); renderDetail();
+    alert("Could not load parcels for " + g.display + ": " + e.message);
+  }
+}
+
+async function fetchOwnerGeo(g) {
+  const feats = [];
+  let offset = 0;
+  while (true) {
+    const body = new URLSearchParams({
+      f:"geojson",
+      where: "objectid IN (" + g.oids.join(",") + ")",
+      outFields: "owner1,account,statedarea,locaddress",
+      returnGeometry:"true", outSR:"4326",
+      orderByFields:"objectid", resultOffset:offset, resultRecordCount:PAGE
+    });
+    const res = await fetch(LAYER, { method:"POST", body });
+    const gj = await res.json();
+    if (gj.error) throw new Error(gj.error.message || "API error");
+    (gj.features||[]).forEach(f=>feats.push(f));
+    offset += (gj.features||[]).length;
+    if (!gj.features || gj.features.length < PAGE) break;
+  }
+  return { type:"FeatureCollection", features:feats };
+}
+
+function fitToSelection() {
+  const layers = [...selection.values()].map(s=>s.layer).filter(Boolean);
+  if (!layers.length) return;
+  map.fitBounds(L.featureGroup(layers).getBounds(), { padding:[30,30], maxZoom:14 });
+}
+
+// --- selection detail panel --------------------------------------------------
+function renderDetail() {
+  const d = $("#detail");
+  if (!selection.size) { d.style.display = "none"; return; }
+  d.style.display = "block";
+
+  const items = [...selection.values()];
+  const tAc = items.reduce((s,x)=>s+x.g.acres,0);
+  const tVal = items.reduce((s,x)=>s+x.g.value,0);
+  const tPar = items.reduce((s,x)=>s+x.g.parcels,0);
+
+  const rowsHtml = items.map(x => `
+    <div class="selrow">
+      <span class="dot" style="background:${x.color}"></span>
+      <span class="nm" title="${x.g.display}">${x.g.display}${x.loading?" (loading…)":""}</span>
+      <span class="num">${acres(x.g.acres)}</span>
+      <span class="rm" data-key="${x.g.key}" title="Remove">×</span>
+    </div>`).join("");
+
+  const single = items.length === 1 ? items[0].g : null;
+  const extra = single ? (
+    (single.mail?`<div><span class="k">Mailing:</span> ${single.mail}</div>`:"") +
+    (single.careofs.size?`<div class="variants">Care of: ${[...single.careofs.keys()].join(" · ")}</div>`:"") +
+    (single.rawCounts.size>1?`<div class="variants">Includes: ${[...single.rawCounts.keys()].join(" · ")}</div>`:"")
+  ) : "";
+
+  d.innerHTML =
+    `<h3><span>${items.length === 1 ? "Selected owner" : items.length + " owners selected"}</span>
+       <button class="ghost" id="clearSel">Clear</button></h3>
+     <div><span class="k">Parcels:</span> ${tPar.toLocaleString()}</div>
+     <div><span class="k">Total acreage:</span> ${acres(tAc)}</div>
+     <div><span class="k">Total actual value:</span> ${money(tVal)}</div>
+     <div style="margin-top:8px">${rowsHtml}</div>` + extra;
+
+  $("#clearSel").onclick = () => {
+    for (const s of selection.values()) if (s.layer) map.removeLayer(s.layer);
+    selection.clear();
+    render(); renderDetail();
+  };
+  d.querySelectorAll(".rm").forEach(el => {
+    el.onclick = ev => {
+      ev.stopPropagation();
+      const s = selection.get(el.dataset.key);
+      if (s && s.layer) map.removeLayer(s.layer);
+      selection.delete(el.dataset.key);
+      render(); renderDetail();
+    };
+  });
+}
+
+// --- map setup -------------------------------------------------------------
+const map = L.map("map", { center:[39.3,-104.1], zoom:9 });
+L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+  attribution:"&copy; OpenStreetMap &copy; CARTO", maxZoom:19
+}).addTo(map);
+
+// --- wire up controls ------------------------------------------------------
+$("#load").onclick = loadAll;
+$("#search").oninput = render;
+$("#sort").onchange = render;
+$("#filterCat").onchange = () => { syncLegendDim(); render(); };
+</script>
+</body>
+</html>

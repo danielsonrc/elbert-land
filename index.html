@@ -519,9 +519,118 @@ function renderDetail() {
 
 // --- map setup -------------------------------------------------------------
 const map = L.map("map", { center:[39.3,-104.1], zoom:9 });
-L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-  attribution:"&copy; OpenStreetMap &copy; CARTO", maxZoom:19
-}).addTo(map);
+
+// stacking order: basemap tiles < parcel boundaries < class paint < selection highlights
+map.createPane("boundaries").style.zIndex = 350;
+map.createPane("paint").style.zIndex = 360;      // selection uses overlayPane (400) on top
+
+// Basemaps. The default "Dark" is CARTO's style drawn from OpenStreetMap data;
+// "Streets" is raw OSM; imagery and terrain come from Esri / OpenTopoMap.
+const BASEMAPS = {
+  "Dark (CARTO / OSM data)": L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution:"&copy; OpenStreetMap &copy; CARTO", maxZoom:19 }),
+  "Streets (OpenStreetMap)": L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution:"&copy; OpenStreetMap contributors", maxZoom:19 }),
+  "Satellite (Esri)": L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    attribution:"Esri, Maxar, Earthstar Geographics", maxZoom:19 }),
+  "Terrain (OpenTopoMap)": L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+    attribution:"&copy; OpenStreetMap, SRTM | &copy; OpenTopoMap (CC-BY-SA)", maxZoom:17 }),
+};
+BASEMAPS["Dark (CARTO / OSM data)"].addTo(map);
+
+// --- always-on parcel boundaries --------------------------------------------
+// The county MapServer renders parcel outlines server-side; we fetch one
+// transparent PNG per view (~25 KB) instead of downloading 17.8k geometries.
+const EXPORT_URL = "https://maps.elbertcounty-co.gov/data/rest/services/" +
+                   "Tax_Parcels_of_Elbert_County_Colorado/MapServer/export";
+const BoundaryLayer = L.Layer.extend({
+  onAdd(m) { this._map = m; this._img = null;
+             m.on("moveend zoomend resize", this._refresh, this); this._refresh(); },
+  onRemove(m) { m.off("moveend zoomend resize", this._refresh, this);
+                if (this._img) { m.removeLayer(this._img); this._img = null; } },
+  _refresh() {
+    const m = this._map, b = m.getBounds(), size = m.getSize();
+    const sw = L.CRS.EPSG3857.project(b.getSouthWest());
+    const ne = L.CRS.EPSG3857.project(b.getNorthEast());
+    const url = EXPORT_URL + "?bbox=" + [sw.x,sw.y,ne.x,ne.y].join(",") +
+      "&bboxSR=102100&imageSR=102100&size=" + size.x + "," + size.y +
+      "&layers=show:14&transparent=true&format=png32&f=image";
+    const img = L.imageOverlay(url, b, { pane:"boundaries", opacity:.85, interactive:false });
+    img.once("load", () => {                       // swap after load to avoid flicker
+      if (this._img) this._map.removeLayer(this._img);
+      this._img = img;
+    });
+    img.addTo(m);
+  }
+});
+const boundaries = new BoundaryLayer();
+boundaries.addTo(map);   // on by default — can be unticked in the layers control
+
+// --- paint every parcel by ownership class -----------------------------------
+// Lazy: geometries (~4.5 MB simplified) download the first time the overlay is
+// ticked. Drawn on a canvas so 17.8k polygons stay responsive.
+const paintGroup = L.layerGroup();
+const paintRenderer = L.canvas({ pane:"paint" });
+let paintLoaded = false, paintLoading = false;
+
+map.on("overlayadd", e => { if (e.layer === paintGroup) loadPaint(); });
+
+async function loadPaint() {
+  if (paintLoaded || paintLoading) return;
+  if (!groups.length) {
+    alert("Load parcel data first (button top-left), then tick this layer again.");
+    map.removeLayer(paintGroup);
+    return;
+  }
+  paintLoading = true;
+  $("#progress").style.display = "block";
+  try {
+    // owner spelling -> class, so each parcel can be colored
+    const catByKey = new Map(groups.map(g => [g.key, g.cat]));
+    let offset = 0, done = 0;
+    while (true) {
+      const body = new URLSearchParams({
+        f:"geojson", where:"1=1", outFields:"objectid,owner1",
+        returnGeometry:"true", outSR:"4326",
+        geometryPrecision:"5", maxAllowableOffset:"0.00005",  // ~5 m — plenty at county scale
+        orderByFields:"objectid", resultOffset:offset, resultRecordCount:PAGE
+      });
+      const res = await fetch(LAYER, { method:"POST", body });
+      const gj = await res.json();
+      if (gj.error) throw new Error(gj.error.message || "API error");
+      const feats = gj.features || [];
+      L.geoJSON({ type:"FeatureCollection", features:feats }, {
+        renderer: paintRenderer,
+        style: f => {
+          const cat = catByKey.get(normalizeOwner(f.properties.owner1)) || "unk";
+          const c = CAT_BY_ID[cat].color;
+          return { color:c, weight:.4, opacity:.6, fillColor:c, fillOpacity:.38 };
+        },
+        onEachFeature: (f, l) => l.bindPopup(() => {
+          const cat = catByKey.get(normalizeOwner(f.properties.owner1)) || "unk";
+          return `<b>${f.properties.owner1 || "(no owner listed)"}</b><br>` +
+                 `<span style="color:${CAT_BY_ID[cat].color}">&#9632;</span> ${CAT_BY_ID[cat].name}`;
+        })
+      }).addTo(paintGroup);
+      done += feats.length;
+      $("#progress > div").style.width = Math.min(100, done/17833*100) + "%";
+      offset += feats.length;
+      if (feats.length < PAGE) break;
+    }
+    paintLoaded = true;
+  } catch (e) {
+    alert("Could not load class map: " + e.message);
+    map.removeLayer(paintGroup);
+  } finally {
+    paintLoading = false;
+    $("#progress").style.display = "none";
+  }
+}
+
+L.control.layers(BASEMAPS, {
+  "Parcel boundaries": boundaries,
+  "Ownership classes (paint)": paintGroup,
+}, { collapsed:true, position:"topright" }).addTo(map);
 
 // --- wire up controls ------------------------------------------------------
 $("#load").onclick = loadAll;

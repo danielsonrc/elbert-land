@@ -1,0 +1,3 @@
+# local secrets (the Airbnb calendar link) and Netlify CLI state
+.env
+.netlify/

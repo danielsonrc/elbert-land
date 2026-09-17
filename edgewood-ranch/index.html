@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Edgewood Ranch — A-Frame &amp; Airstream Stays</title>
+  <meta name="description" content="A glass A-frame and a vintage Airstream on ten acres of pines near Peyton, Colorado. Wander the meadow in 3D, then book your stay.">
+  <meta name="theme-color" content="#4b2f63">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Edgewood Ranch — A-Frame &amp; Airstream stays near Peyton, Colorado">
+  <meta property="og:description" content="A glass A-frame and a vintage Airstream on ten acres of Colorado pines. Wander the meadow in 3D and pick your stay.">
+  <meta property="og:image" content="images/share-card.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234b2f63'/%3E%3Ccircle cx='41' cy='27' r='10' fill='%23fbb66a'/%3E%3Cpath d='M0 48 17 29l11 12 10-9 26 18v14H0Z' fill='%23b8475a'/%3E%3Cpath d='M13 64 27 36l14 28Z' fill='%23231221'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Caveat:wght@600&family=Work+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/panel.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="js/main.js"></script>
+</head>
+<body data-view="loading" data-tod="golden">
+
+  <!-- Illustrated poster: loader backdrop and the fallback when WebGL is unavailable -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="poster-sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#3d2757"/>
+        <stop offset=".45" stop-color="#b9505a"/>
+        <stop offset=".72" stop-color="#f28a55"/>
+        <stop offset="1" stop-color="#fbc27a"/>
+      </linearGradient>
+      <symbol id="pine" viewBox="0 0 40 120">
+        <path d="M20 0 30 30h-5l11 30h-7l11 35H22v25h-4V95H0l11-35H4l11-30h-5Z"/>
+      </symbol>
+      <symbol id="poster-art" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+        <rect width="1600" height="900" fill="url(#poster-sky)"/>
+        <circle cx="1080" cy="505" r="92" fill="#ffd9a3"/>
+        <circle cx="1080" cy="505" r="150" fill="#ffd9a3" opacity=".16"/>
+        <path d="M0 560 120 500l90 30 110-80 80 40 120-70 90 50 90-40 120-50 80 60 110-40 110 60 120-50 110 60 110-40 140 50v420H0Z" fill="#d9776a"/>
+        <path d="M0 640 90 600l90 20 120-60 90 40 90-30 120 50 120-60 80 30 130-50 110 60 110-30 110 40 120-50 120 40 100-20v320H0Z" fill="#a8465a"/>
+        <path d="M0 720 140 680l120 20 160-50 140 40 140-30 160 40 140-30 180 40 140-40 160 30 120-20v220H0Z" fill="#6f2c47"/>
+        <g fill="#3f1a34">
+          <use href="#pine" x="40" y="610" width="44" height="132"/>
+          <use href="#pine" x="92" y="640" width="34" height="102"/>
+          <use href="#pine" x="230" y="630" width="40" height="120"/>
+          <use href="#pine" x="610" y="646" width="36" height="108"/>
+          <use href="#pine" x="652" y="620" width="46" height="138"/>
+          <use href="#pine" x="1250" y="628" width="44" height="132"/>
+          <use href="#pine" x="1300" y="652" width="34" height="102"/>
+          <use href="#pine" x="1480" y="600" width="52" height="156"/>
+          <use href="#pine" x="1535" y="640" width="38" height="114"/>
+        </g>
+        <path d="M0 815c300-35 600-25 800-15s500-15 800 0v115H0Z" fill="#26111f"/>
+        <rect x="410" y="776" width="98" height="30" rx="15" fill="#26111f"/>
+        <rect x="438" y="784" width="22" height="8" rx="3" fill="#ffb45a"/>
+        <rect x="468" y="784" width="22" height="8" rx="3" fill="#ffb45a"/>
+        <path d="M884 799v-21h24v21Z" fill="#26111f"/>
+        <path d="M880 779l16-11 16 11Z" fill="#26111f"/>
+        <circle cx="896" cy="782" r="2" fill="#ffb45a"/>
+        <path d="M1104 799 1128 714l24 85Z" fill="#26111f"/>
+        <path d="M1118 799 1128 762l10 37Z" fill="#ffb45a"/>
+        <path d="M1082 799h92v-6h-92Z" fill="#26111f"/>
+        <g fill="#26111f">
+          <use href="#pine" x="-10" y="660" width="70" height="210"/>
+          <use href="#pine" x="300" y="700" width="50" height="150"/>
+          <use href="#pine" x="1180" y="690" width="56" height="168"/>
+          <use href="#pine" x="1520" y="640" width="80" height="240"/>
+        </g>
+        <path d="M720 300q10-8 20 0q10-8 20 0M780 330q7-6 14 0q7-6 14 0" fill="none" stroke="#3d2140" stroke-width="3" stroke-linecap="round"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <div class="poster" aria-hidden="true"><svg><use href="#poster-art"/></svg></div>
+  <canvas id="world" aria-label="3D view of the ranch meadow. Use the stay cards below, or press 1 or 2, to choose a stay."></canvas>
+  <div class="atmos" aria-hidden="true"></div>
+  <div id="markers" class="markers"></div>
+
+  <header class="brand">
+    <p class="brand__loc" data-ranch="location">Peyton, Colorado</p>
+    <h1 class="brand__name" data-ranch="name">Edgewood Ranch</h1>
+    <p class="brand__tag" data-ranch="tagline"></p>
+  </header>
+
+  <nav class="topbar" aria-label="Scene controls">
+    <div class="tod" role="group" aria-labelledby="tod-label">
+      <span id="tod-label" class="tod__label">Golden hour</span>
+      <div id="tod" class="tod__buttons"></div>
+    </div>
+    <a id="contact" class="topbar__link" href="#">Contact</a>
+  </nav>
+
+  <div class="hud-bottom">
+    <div class="compass" aria-hidden="true">
+      <div class="compass__dial">
+        <div id="compass-rose" class="compass__rose">
+          <svg viewBox="0 0 100 100">
+            <g stroke="#8a7465" stroke-width="1.4">
+              <path d="M50 6v6M50 88v6M6 50h6M88 50h6"/>
+              <path d="M81.1 18.9l-3 3M18.9 81.1l3-3M18.9 18.9l3 3M81.1 81.1l-3-3" stroke-width="1"/>
+            </g>
+            <path d="M50 26 55 50 50 74 45 50Z" fill="#2b1c16" opacity=".85"/>
+            <path d="M50 26 55 50H45Z" fill="#c4492c"/>
+            <circle cx="50" cy="50" r="3" fill="#f5ead5" stroke="#2b1c16" stroke-width="1.5"/>
+            <g font-family="Big Shoulders Display, Arial Narrow, sans-serif" font-weight="900" font-size="13" text-anchor="middle" fill="#2b1c16">
+              <text x="50" y="23">N</text><text x="79" y="54.5">E</text><text x="50" y="86">S</text><text x="21" y="54.5">W</text>
+            </g>
+          </svg>
+        </div>
+        <span class="compass__needle"></span>
+      </div>
+      <span id="compass-bearing" class="compass__bearing">W 270°</span>
+    </div>
+    <p class="hint">
+      <span class="hint--pointer">Drag to look around. Click a stay to book it.</span>
+      <span class="hint--touch">Drag to look around. Tap a stay to book it.</span>
+    </p>
+  </div>
+
+  <section class="stays" aria-label="Choose your stay">
+    <p class="stays__title hand">pick your spot</p>
+    <div id="stay-cards" class="stay-cards"></div>
+  </section>
+
+  <div class="intro-title" aria-hidden="true">
+    <p>welcome to</p>
+    <h2 data-ranch="name">Edgewood Ranch</h2>
+  </div>
+  <button id="skip-intro" class="skip" type="button">Skip intro</button>
+
+  <aside id="panel" class="panel" aria-hidden="true" aria-labelledby="stay-name">
+    <div class="panel__scroll">
+      <button class="panel__grab" type="button" data-expand aria-label="Expand booking panel"></button>
+      <button class="panel__back" type="button" data-action="close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+        Back to the meadow
+      </button>
+
+      <figure class="gallery" data-bind="gallery" hidden>
+        <div class="gallery__frame">
+          <img data-bind="gallery-img" alt="" decoding="async">
+          <span class="gallery__tag" data-bind="gallery-tag"></span>
+          <button type="button" class="gallery__nav gallery__nav--prev" data-action="photo-prev" aria-label="Previous picture">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+          </button>
+          <button type="button" class="gallery__nav gallery__nav--next" data-action="photo-next" aria-label="Next picture">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          </button>
+          <button type="button" class="gallery__zoom" data-action="photo-zoom" aria-label="View larger">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>
+          </button>
+        </div>
+        <figcaption data-bind="gallery-caption"></figcaption>
+      </figure>
+
+      <header class="panel__head">
+        <div class="stamp" aria-hidden="true"><span>Site</span><b data-bind="site">01</b></div>
+        <p class="eyebrow" data-bind="kicker"></p>
+        <h2 id="stay-name" data-bind="name" tabindex="-1"></h2>
+        <p class="status-pill" data-bind="status" hidden>Coming soon</p>
+        <a class="rating" data-bind="rating" target="_blank" rel="noopener" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3.5l2.5 5.3 5.8.7-4.3 3.9 1.2 5.7L12 16.2l-5.2 2.9L8 13.4 3.7 9.5l5.8-.7z"/></svg>
+          <span data-bind="rating-text"></span>
+        </a>
+        <p class="panel__blurb" data-bind="blurb"></p>
+        <p class="rates" data-bind="rates"></p>
+        <ul class="facts" data-bind="facts"></ul>
+        <ul class="amenities" data-bind="amenities" aria-label="Amenities"></ul>
+      </header>
+
+      <!-- Netlify Forms picks this up at deploy time; only the waitlist posts to it. -->
+      <form class="booking" name="waitlist" method="POST" data-netlify="true" netlify-honeypot="bot-field" novalidate>
+        <input type="hidden" name="form-name" value="waitlist">
+        <input type="hidden" name="stay" data-bind="form-stay">
+        <p class="honeypot" hidden><label>Leave this empty <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>
+        <section class="field-block book-only" aria-labelledby="dates-title">
+          <div class="block-title">
+            <h3 id="dates-title">Dates</h3>
+            <span class="hand" data-bind="min-nights"></span>
+          </div>
+          <div class="range">
+            <button type="button" data-action="focus-in"><span>Check-in</span><b data-bind="in-label">Add date</b></button>
+            <button type="button" data-action="focus-out"><span>Check-out</span><b data-bind="out-label">Add date</b></button>
+          </div>
+          <div class="cal">
+            <div class="cal__head">
+              <button type="button" class="cal__nav" data-action="prev" aria-label="Previous month">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+              </button>
+              <h4 data-bind="month" aria-live="polite"></h4>
+              <button type="button" class="cal__nav" data-action="next" aria-label="Next month">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+              </button>
+            </div>
+            <div class="cal__dow" aria-hidden="true"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+            <div class="cal__grid" data-bind="grid"></div>
+            <div class="cal__legend" aria-hidden="true">
+              <span><i></i>Open</span><span><i class="booked"></i>Booked</span><span><i class="yours"></i>Your stay</span>
+            </div>
+          </div>
+          <p class="cal__msg" data-bind="date-msg" role="status"></p>
+          <p class="cal__status" data-bind="cal-status" hidden></p>
+        </section>
+
+        <section class="field-block book-only" aria-labelledby="guests-title">
+          <div class="block-title">
+            <h3 id="guests-title">Guests</h3>
+            <span class="hand" data-bind="sleeps"></span>
+          </div>
+          <div class="stepper">
+            <button type="button" data-action="guests-dec" aria-label="Fewer guests">−</button>
+            <span data-bind="guests" aria-live="polite">2 guests</span>
+            <button type="button" data-action="guests-inc" aria-label="More guests">+</button>
+          </div>
+          <div class="price request-only" data-bind="price" hidden>
+            <dl data-bind="price-rows"></dl>
+            <div class="price__total">
+              <span>Total<small data-bind="nights"></small></span>
+              <b data-bind="total"></b>
+            </div>
+          </div>
+        </section>
+
+        <section class="field-block waitlist-only" aria-labelledby="waitlist-title">
+          <h3 id="waitlist-title">Be first to book</h3>
+          <p class="waitlist-copy" data-bind="waitlist-copy"></p>
+        </section>
+
+        <section class="field-block airbnb-only" aria-labelledby="book-title">
+          <h3 id="book-title" class="visually-hidden">Book</h3>
+          <a class="btn-primary airbnb-cta" data-bind="airbnb-cta" href="#" target="_blank" rel="noopener">See prices &amp; book on Airbnb <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
+          <p class="fine" data-bind="airbnb-note"></p>
+        </section>
+
+        <section class="field-block form-only" aria-labelledby="details-title">
+          <h3 id="details-title">Your details</h3>
+          <label class="field"><span>Full name</span><input name="name" autocomplete="name" required></label>
+          <label class="field"><span>Email</span><input name="email" type="email" autocomplete="email" required></label>
+          <label class="field"><span>Phone <em>(optional)</em></span><input name="phone" type="tel" autocomplete="tel"></label>
+          <label class="field"><span>Anything we should know?</span><textarea name="notes" rows="2" placeholder="Arrival time, pups, anniversaries…"></textarea></label>
+          <p class="form-error" data-bind="form-error" role="alert"></p>
+          <button class="btn-primary" type="submit" data-bind="submit">Request to book</button>
+          <p class="fine" data-bind="fine"></p>
+        </section>
+
+        <button type="button" class="swap" data-action="swap" data-bind="swap"></button>
+      </form>
+
+      <section class="confirm" data-bind="confirm" tabindex="-1" hidden>
+        <div class="confirm__stamp" data-bind="c-stamp">Request received</div>
+        <h3 data-bind="c-title"></h3>
+        <p class="confirm__code request-only">Reservation <b data-bind="c-code"></b></p>
+        <dl class="request-only">
+          <dt>Stay</dt><dd data-bind="c-stay"></dd>
+          <dt>Dates</dt><dd><span data-bind="c-dates"></span><br><small data-bind="c-times"></small></dd>
+          <dt>Party</dt><dd data-bind="c-guests"></dd>
+          <dt>Total</dt><dd data-bind="c-total"></dd>
+        </dl>
+        <p data-bind="c-next"></p>
+        <p class="demo-note" data-bind="c-demo">Preview mode: nothing was sent. This is only saved in this browser.</p>
+        <div class="confirm__actions">
+          <a class="btn-secondary request-only" data-bind="c-ics" href="#" download>Add to calendar</a>
+          <button class="btn-primary" type="button" data-action="done">Back to the meadow</button>
+        </div>
+      </section>
+    </div>
+  </aside>
+
+  <dialog id="lightbox" class="lightbox" aria-label="Picture">
+    <figure>
+      <img alt="">
+      <figcaption></figcaption>
+    </figure>
+    <button type="button" class="lightbox__close" data-close aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </dialog>
+
+  <div id="loader" class="loader" role="status">
+    <svg aria-hidden="true"><use href="#poster-art"/></svg>
+    <div class="loader__text">
+      <h2 data-ranch="name">Edgewood Ranch</h2>
+      <p>hiking in</p>
+    </div>
+  </div>
+
+  <noscript><p>This site needs JavaScript to show the ranch and take bookings. Email us instead.</p></noscript>
+</body>
+</html>

@@ -48,8 +48,9 @@ Tests for the calendar function: `node --test "edgewood-ranch/netlify/lib/*.test
    `https://<your-site>/api/availability?stay=aframe` should show date ranges.
 5. **Turn on the waitlist:** in the Forms section, enable form detection and redeploy, then add
    an email notification so Airstream sign-ups reach you. Submit the form once to check.
-6. **Add your domain** under Domain management (HTTPS is automatic). Then change `og:image` in
-   `index.html` to the full URL so link previews show the picture everywhere.
+6. **Add your domain** under Domain management (HTTPS is automatic). Then point `og:url` and
+   `og:image` in `index.html` at it; they use the netlify.app address until then, and link
+   previews need the full URL.
 7. **Fill in `js/data.js`:** the contact email (the Contact link stays hidden until it's set)
    and the A-Frame's rating, which is copied by hand from Airbnb.
 

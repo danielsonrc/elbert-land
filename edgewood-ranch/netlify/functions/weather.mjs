@@ -6,7 +6,7 @@ import { skyFrom } from '../lib/weather.mjs';
 const STATIONS = ['KFLY', 'KCOS'];
 const STALE_MS = 3 * 60 * 60 * 1000;
 // api.weather.gov asks every caller to identify itself
-const HEADERS = { 'User-Agent': 'EdgewoodRanch/1.0 (edgewoodranchglamping.netlify.app)', Accept: 'application/geo+json' };
+const HEADERS = { 'User-Agent': 'EdgewoodRanch/1.0 (edgewoodranchglamping.com, hello@edgewoodranchglamping.com)', Accept: 'application/geo+json' };
 
 const json = (body, status = 200, headers = {}) => Response.json(body, { status, headers });
 

@@ -98,14 +98,15 @@ button:not(:disabled) { cursor: pointer; }
 
 /* --- shared HUD visibility --------------------------------------------------------- */
 /* Visibility flips on instantly (so things are focusable at once) and off only after the fade. */
-.brand, .topbar, .hud-bottom, .stays, .markers {
+.brand, .topbar, .hud-bottom, .stays, .markers, .legal {
   transition: opacity 0.7s var(--ease), transform 0.7s var(--ease), visibility 0s linear;
 }
-body:is([data-view="loading"], [data-view="intro"]) :is(.brand, .topbar, .hud-bottom, .stays, .markers),
-body[data-view="stay"] .stays {
+body:is([data-view="loading"], [data-view="intro"]) :is(.brand, .topbar, .hud-bottom, .stays, .markers, .legal),
+body[data-view="stay"] :is(.stays, .legal) {
   transition-delay: 0s, 0s, 0.7s;
 }
-body:is([data-view="loading"], [data-view="intro"]) :is(.brand, .topbar, .hud-bottom, .stays, .markers) {
+body:is([data-view="loading"], [data-view="intro"]) :is(.brand, .topbar, .hud-bottom, .stays, .markers, .legal),
+body[data-view="stay"] .legal {
   opacity: 0;
   visibility: hidden;
 }
@@ -435,6 +436,20 @@ body[data-stay="airstream"] .marker[data-stay="airstream"] { opacity: 0; pointer
   70%, 100% { transform: scale(1.6); opacity: 0; }
 }
 
+/* --- copyright and the legal pages -------------------------------------------------------------- */
+.legal {
+  position: fixed;
+  right: var(--gutter);
+  bottom: calc(var(--gutter) - 2px);
+  margin: 0;
+  color: rgba(255, 243, 223, 0.8);
+  font: 500 12px/1 var(--body);
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+.legal a { color: inherit; text-decoration: none; }
+.legal a:is(:hover, :focus-visible) { color: var(--cream); text-decoration: underline; text-underline-offset: 3px; }
+
 /* --- the entrance sign & skip --------------------------------------------------------------------- */
 /* The ranch's name as the big sign over the drive. scene.js hangs this in the world with CSS 3D
    transforms (1200px across here is SIGN_PX there), so the arrival drives right underneath it. */
@@ -556,19 +571,21 @@ noscript p {
 
 /* --- small screens ---------------------------------------------------------------------------------- */
 @media (max-width: 760px) {
+  :root { --foot: calc(max(4px, env(safe-area-inset-bottom)) + 20px); } /* room under the cards */
+  .legal { left: 0; right: 0; bottom: max(4px, env(safe-area-inset-bottom)); font-size: 11px; text-align: center; }
   .brand { max-width: calc(100vw - 2 * var(--gutter)); }
   .brand__tag { display: none; }
   body[data-view="stay"] :is(.brand, .topbar, .hud-bottom) { transition-delay: 0s, 0s, 0.7s; }
   body[data-view="stay"] .brand { opacity: 0; visibility: hidden; }
-  .topbar { top: auto; bottom: calc(var(--gutter) + 132px); right: var(--gutter); }
+  .topbar { top: auto; bottom: calc(var(--foot) + 132px); right: var(--gutter); }
   .tod__label, .topbar__link { display: none; }
   .tod__buttons button { width: 36px; height: 36px; }
   .tod__weather { order: -1; } /* opens upward, so the time row stays under your thumb */
   body[data-view="stay"] .topbar, body[data-view="stay"] .hud-bottom { opacity: 0; visibility: hidden; }
-  .hud-bottom { bottom: calc(var(--gutter) + 132px); }
+  .hud-bottom { bottom: calc(var(--foot) + 132px); }
   .compass__dial { width: 56px; height: 56px; }
   .hint { display: none; }
-  .stays { left: var(--gutter); right: var(--gutter); transform: none; }
+  .stays { left: var(--gutter); right: var(--gutter); bottom: var(--foot); transform: none; }
   body:is([data-view="loading"], [data-view="intro"], [data-view="stay"]) .stays { transform: translateY(30px); }
   .stays__title { display: none; }
   .stay-cards { width: 100%; gap: 10px; }

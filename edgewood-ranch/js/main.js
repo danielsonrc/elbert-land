@@ -16,6 +16,11 @@ let world = null;
 for (const el of document.querySelectorAll('[data-ranch]')) el.textContent = RANCH[el.dataset.ranch];
 if (RANCH.email) $('#contact').href = `mailto:${RANCH.email}`;
 else $('#contact').hidden = true;
+// Small screens hide the top-bar link, so the footer lines carry one too.
+for (const el of document.querySelectorAll('[data-contact]')) {
+  el.hidden = !RANCH.email;
+  el.querySelector('a').href = `mailto:${RANCH.email}`;
+}
 
 // --- stay cards & floating markers --------------------------------------------------
 const fromPrice = (s) => money(Math.min(s.rates.weeknight, s.rates.weekend));

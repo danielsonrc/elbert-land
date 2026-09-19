@@ -1,0 +1,103 @@
+/* Edgewood Ranch — the plain document pages (privacy policy, terms) */
+
+:root {
+  --paper: #f5ead5;
+  --paper-2: #ecdcc0;
+  --ink: #2b1c16;
+  --ink-2: #5b473b;
+  --ink-3: #8a7465;
+  --line: rgba(43, 28, 22, 0.16);
+  --accent: #c4492c;
+  --display: "Big Shoulders Display", "Oswald", "Arial Narrow", Impact, sans-serif;
+  --body: "Work Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --gutter: clamp(16px, 4vw, 40px);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1d2244;
+    --paper-2: #262c55;
+    --ink: #f4ecdc;
+    --ink-2: #cdc5b8;
+    --ink-3: #a09aab;
+    --line: rgba(244, 236, 220, 0.16);
+    --accent: #f2b25c;
+    color-scheme: dark;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 17px/1.65 var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 3px solid #f2b25c; outline-offset: 2px; }
+
+.doc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px var(--gutter);
+  border-bottom: 1px solid var(--line);
+}
+.doc-head__brand {
+  color: var(--ink);
+  font: 900 24px/1 var(--display);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.doc-head__back { font-size: 14px; font-weight: 600; white-space: nowrap; }
+
+.doc {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 44px var(--gutter) 56px;
+}
+.doc__eyebrow {
+  margin: 0 0 6px;
+  color: var(--ink-3);
+  font: 700 13px/1.2 var(--display);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+.doc h1 {
+  margin: 0;
+  font: 900 clamp(40px, 8vw, 60px)/0.95 var(--display);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+.doc__date { margin: 10px 0 28px; color: var(--ink-3); font-size: 14px; }
+.doc__lede {
+  margin: 0 0 8px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  background: var(--paper-2);
+  color: var(--ink);
+}
+.doc h2 {
+  margin: 36px 0 8px;
+  font: 800 22px/1.15 var(--display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.doc p, .doc ul { margin: 0 0 14px; color: var(--ink-2); }
+.doc ul { padding-left: 1.2em; }
+.doc li { margin-bottom: 8px; }
+.doc strong { color: var(--ink); font-weight: 600; }
+
+.doc-foot {
+  padding: 22px var(--gutter) 30px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-3);
+  font-size: 13px;
+  text-align: center;
+}
+.doc-foot a { color: inherit; }

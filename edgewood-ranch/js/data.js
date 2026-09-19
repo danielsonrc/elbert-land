@@ -9,7 +9,7 @@ export const RANCH = {
   location: 'Peyton, Colorado',
   tagline: 'A glass A-frame and a vintage Airstream on ten acres of Colorado pines.',
   hosts: 'Daniel & Riley',
-  email: '', // TODO: add a contact address to show the Contact link
+  email: 'hello@edgewoodranchglamping.com', // shows the Contact link; privacy.html and terms.html list the same address
   checkIn: '3:00 PM',
   checkOut: '11:00 AM',
   // Online, waitlist sign-ups go to Netlify Forms. On localhost they're kept in the browser.

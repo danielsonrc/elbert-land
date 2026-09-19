@@ -311,6 +311,16 @@ body[data-tod="night"] .form-error { color: #ff9c7f; }
 .btn-secondary { background: var(--paper-2); color: var(--ink); }
 .btn-secondary:hover { background: var(--paper-3); }
 .fine { margin: 10px 0 0; text-align: center; color: var(--ink-3); font-size: 12.5px; line-height: 1.5; }
+.fine a, .panel__legal a { color: inherit; text-underline-offset: 3px; }
+.fine + .fine { margin-top: 4px; }
+.panel__legal {
+  margin: 26px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-3);
+  font-size: 12px;
+  text-align: center;
+}
 .swap {
   justify-self: center;
   margin-top: 18px;

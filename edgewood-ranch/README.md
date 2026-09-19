@@ -117,6 +117,7 @@ Business Profile, cards or a QR code instead.
 | `js/world.js` | Noise, the layout of the land, terrain, sky dome and ridgelines. |
 | `js/nature.js` | Instanced forest and aspens, rocks, stars, fireflies, clouds, the lookout tower, the northern lights and the holiday fireworks. |
 | `js/kit.js` | Shared building blocks: materials, string lights (warm or coloured), flames, lanterns, planters, chairs, pumpkins, wreaths, and the hot tub and grill both stays use. |
+| `privacy.html`, `terms.html`, `css/legal.css` | The privacy policy and terms of use. |
 | `js/main.js` | Wires the HUD, the sky controls, cards, markers, keyboard shortcuts and deep links to the world. |
 | `images/aframe/` | The listing photos (WebP), shown in the A-Frame panel. |
 | `images/` | The Airstream renders and `share-card.jpg` for link previews. |
@@ -131,6 +132,12 @@ Business Profile, cards or a QR code instead.
   purpose.
 - The sun keeps to the real sky over the north-facing view: it comes up in the east-south-east,
   sits in the south-west in the afternoon and sets in the west-north-west.
+- Legal: `privacy.html` (what the site collects: only waitlist sign-ups, kept by Netlify Forms; no
+  cookies or trackers) and `terms.html` (booking through Airbnb, the waitlist, the not-a-map note,
+  copyright, trademarks, accessibility). Both are linked from the meadow view, the booking panel
+  and the waitlist form. Both list hello@edgewoodranchglamping.com, the same address as
+  `RANCH.email` in `js/data.js`; change all three together. Update the privacy policy before adding
+  any analytics or ad tracking.
 - Deep links: `#aframe` and `#airstream` open a stay directly.
 - Keyboard: `1` / `2` pick a stay, `Esc` returns to the meadow or skips the intro; arrow keys page through the enlarged photos.
 - The availability function is cached for about 15 minutes, so a new Airbnb booking can take that long to show.

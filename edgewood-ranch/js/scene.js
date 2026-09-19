@@ -1,16 +1,21 @@
 // The 3D ranch: renderer, lighting, time of day, camera moves and picking.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 import { PALETTES } from './data.js';
 import {
-  SITES, GATE, GROVES, inViewCorridor, heightAt, meadowRadius, smoothstep, lerp, clamp,
+  SITES, ENTRANCE, TRUCK, GROVES, inViewCorridor, heightAt, meadowRadius, alongDrive, smoothstep, lerp, clamp,
   createTerrain, createSky, createRidges, RIDGE_HAZE,
 } from './world.js';
-import { createForest, createLookout, createStars, createFireflies, createClouds } from './nature.js';
+import {
+  createForest, createLookout, createStars, createFireflies, createClouds, createAurora, createFireworks,
+} from './nature.js';
 import { createAFrame } from './models.js';
 import { createAirstream } from './airstream.js';
-import { createGate, createSitePosts, createBathhouse, createSiteRing } from './props.js';
+import { createTruck, createFence, createSitePosts, createBathhouse, createSiteRing } from './props.js';
 import { V, GLOW_LAYER } from './kit.js';
+import { createWeather } from './weather.js';
+import { createWildlife } from './wildlife.js';
 
 const COLOR_KEYS = ['skyTop', 'skyMid', 'horizon', 'fog', 'ridge', 'sun', 'hemiSky', 'hemiGround'];
 const NUM_KEYS = ['sunI', 'hemiI', 'disc', 'stars', 'night'];
@@ -51,6 +56,12 @@ const DEFAULT_ORBIT = [-1, 1];
 const OVERVIEW_ORBIT = [-1.25, 1.25];
 const FOCUS_DISTANCE = [8, 30];
 
+// The entrance sign: the ranch's name hung over the drive this far in from the road, its lower
+// edge this high. It's the page's own lettering (see .entrance-sign): SIGN_PX of it is shown
+// SIGN_WIDTH across, and narrow screens stack it.
+const SIGN_AT = 15, SIGN_CLEAR = 4.4, SIGN_WIDTH = 12.5, SIGN_PX = 1200;
+const INTRO_SECONDS = 10.5;
+
 const easeInOutCubic = (x) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2);
 const easeInOutSine = (x) => -(Math.cos(Math.PI * x) - 1) / 2;
 
@@ -66,8 +77,9 @@ function cameraClearance(x, z) {
 }
 
 export function createRanchScene({
-  canvas, markers = {}, ranchName = 'Edgewood Ranch', reducedMotion = false,
+  canvas, markers = {}, sign: signEl = null, reducedMotion = false,
   onHover = () => {}, onSelect = () => {}, onHeading = () => {}, onReady = () => {}, onIntroEnd = () => {},
+  onEasterEgg = () => {},
 }) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   let prCap = 1.75; // lowered automatically if the GPU can't keep up
@@ -113,14 +125,18 @@ export function createRanchScene({
   }));
   const rings = {
     aframe: createSiteRing('aframe', 9, [1.4, 1.4]),
-    airstream: createSiteRing('airstream', 8.4, [1, 2.2]),
+    airstream: createSiteRing('airstream', 8.3, [-0.8, 2.5]),
   };
+  const weather = createWeather();
+  const aurora = createAurora();
   const parts = [
-    createForest({ sightlines }), createLookout(), createStars(), createFireflies(), createClouds(),
-    aframe, airstream, createGate(ranchName), createSitePosts(), createBathhouse(),
+    aurora, createFireworks(),
+    createForest({ sightlines }), createLookout(), createStars(), createFireflies(), createClouds(), createWildlife(),
+    aframe, airstream, createTruck(), createFence(), createSitePosts(), createBathhouse(),
     rings.aframe, rings.airstream,
   ];
   for (const p of parts) scene.add(p.object);
+  scene.add(weather.object); // ticked on its own: it drives the sky, not the other way round
 
   // invisible, generous hit boxes make the stays easy to click
   const proxies = [];
@@ -132,6 +148,12 @@ export function createRanchScene({
     stay.object.add(m);
     proxies.push(m);
   }
+
+  // An easter egg: look through the A-frame's telescope (click it) for the northern lights.
+  const scopeHit = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.7, 0.9), new THREE.MeshBasicMaterial());
+  scopeHit.position.y = 0.85;
+  scopeHit.visible = false;
+  aframe.telescope.add(scopeHit);
 
   // Mirror-polished aluminium: reflect the world as seen from inside the trailer.
   const probe = new THREE.CubeCamera(0.5, 3000, new THREE.WebGLCubeRenderTarget(256));
@@ -155,6 +177,8 @@ export function createRanchScene({
   const states = Object.fromEntries(Object.entries(PALETTES).map(([k, p]) => [k, toState(p)]));
   let current = cloneState(states.golden);
   let blend = null;
+  const shown = cloneState(current); // `current` as the weather shows it
+  let skyDirty = false;
 
   function applyState(s) {
     const { colors: c, nums: n } = s;
@@ -180,17 +204,58 @@ export function createRanchScene({
     for (const p of parts) p.update?.(n, c);
   }
 
-  function setTimeOfDay(key, instant = false) {
-    const to = states[key];
-    if (!to) return;
+  function showSky() {
+    applyState(weather.shade(current, shown));
+    weather.fog(scene.fog);
+    skyDirty = false;
+  }
+
+  function skyTo(to, instant, duration) {
     if (instant || reducedMotion) {
       current = cloneState(to);
-      applyState(current);
       blend = null;
+      showSky();
       reflectionsDirty = true;
     } else {
-      blend = { from: cloneState(current), to, t: 0 };
+      blend = { from: cloneState(current), to, t: 0, duration };
     }
+  }
+
+  function setTimeOfDay(key, instant = false) {
+    if (states[key]) skyTo(states[key], instant, 1.6);
+  }
+
+  /** Part way from one palette to another, as the live sky asks for. */
+  function setTimeMix(from, to, t, instant = false) {
+    if (!states[from] || !states[to]) return;
+    const mix = cloneState(states[from]);
+    blendInto(mix, states[from], states[to], t);
+    skyTo(mix, instant, 3);
+  }
+
+  /** Roll in one of the weather presets (see weather.js); `instant` skips the easing. */
+  function setWeather(kind, { instant = false } = {}) {
+    weather.set(kind, { instant: instant || reducedMotion });
+    skyDirty = true;
+  }
+
+  // --- the entrance sign ---------------------------------------------------------------
+  // The browser draws the letters (so they stay sharp up close) and CSS 3D transforms hang them
+  // over the drive, so the arrival drives right underneath. Shown only during the intro.
+  let sign = null;
+  if (signEl) {
+    const layer = new CSS3DRenderer();
+    layer.domElement.className = 'sign-layer';
+    layer.domElement.hidden = true;
+    canvas.after(layer.domElement);
+    const at = alongDrive(SIGN_AT);
+    const object = new CSS3DObject(signEl);
+    object.position.set(at.x, 0, at.z);
+    object.rotation.y = Math.atan2(-at.dx, -at.dz); // facing back down the drive
+    object.scale.setScalar(SIGN_WIDTH / SIGN_PX);
+    const signScene = new THREE.Scene();
+    signScene.add(object);
+    sign = { layer, object, signScene, facing: V(-at.dx, 0, -at.dz), ground: heightAt(at.x, at.z) };
   }
 
   // --- viewport & framing ------------------------------------------------------------
@@ -217,6 +282,7 @@ export function createRanchScene({
     size.h = Math.max(1, canvas.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, prCap));
     renderer.setSize(size.w, size.h, false);
+    sign?.layer.setSize(size.w, size.h);
     viewAspect = size.w / size.h;
     camera.fov = fovFor(viewAspect);
     applyInset();
@@ -314,33 +380,50 @@ export function createRanchScene({
     }
     mode = 'intro';
     controls.enabled = false;
-    const gy = GATE.y;
-    const mid = GATE.z - 8;
+    // Up the county road, a right turn in under the sign, up the drive past the old truck, then
+    // off the drive and up for the view over the meadow. `look` holds where the camera looks as
+    // it passes each point of `path`.
+    const EYE = 2.6; // a pickup's cab
+    const ground = (x, z, lift = EYE) => V(x, heightAt(x, z) + lift, z);
+    const drive = (d, lift = EYE) => { const p = alongDrive(d); return ground(p.x, p.z, lift); };
+    const E = ENTRANCE;
+    const leave = drive(58, EYE + 1.2);
+    const truck = V(TRUCK.x, TRUCK.y + 1.3, TRUCK.z);
+    const stops = [
+      [ground(E.x - 0.6, E.z + 24), ground(E.x - 0.2, E.z - 20, EYE + 1)],
+      [ground(E.x - 0.4, E.z + 12), ground(E.x + 4, E.z - 7, EYE + 1)],
+      [ground(E.x + 0.8, E.z + 3.6), drive(SIGN_AT, SIGN_CLEAR + 0.8)], // turning in, eyes on the sign
+      [drive(5), drive(SIGN_AT + 3, SIGN_CLEAR + 0.3)],
+      [drive(14), drive(30, EYE + 0.6)], // under it
+      [drive(26), drive(42, EYE + 0.4)],
+      [drive(38), drive(52, EYE).lerp(truck, 0.5)], // a glance at the truck going by
+      [drive(50), drive(66, EYE + 0.6)],
+      [leave.clone().lerp(end.pos, 0.45).setY(lerp(leave.y, end.pos.y, 0.7)), drive(74, 2).lerp(end.target, 0.55)],
+      [end.pos, end.target],
+    ];
     intro = {
       time: 0,
-      duration: 8,
-      path: new THREE.CatmullRomCurve3([
-        V(GATE.x + 0.6, gy + 2.7, GATE.z + 30),
-        V(GATE.x + 0.2, gy + 2.9, GATE.z + 9),
-        V(GATE.x - 0.2, gy + 3.2, mid),
-        V(1.5, lerp(gy + 3.2, end.pos.y, 0.55), lerp(mid, end.pos.z, 0.5)),
-        end.pos,
-      ], false, 'centripetal'),
-      look0: V(GATE.x, gy + 3.6, GATE.z - 50),
+      duration: INTRO_SECONDS,
+      path: new THREE.CatmullRomCurve3(stops.map(([at]) => at), false, 'centripetal'),
+      look: new THREE.CatmullRomCurve3(stops.map(([, look]) => look), false, 'centripetal'),
       end,
     };
+    if (sign) sign.layer.domElement.hidden = false;
   }
 
   function stepIntro(dt) {
     intro.time += dt;
     const raw = Math.min(1, intro.time / intro.duration);
-    camera.position.copy(intro.path.getPointAt(easeInOutSine(raw)));
+    // even speed along the path; the look curve is sampled at the matching point
+    const t = intro.path.getUtoTmapping(easeInOutSine(raw));
+    camera.position.copy(intro.path.getPoint(t));
     const floor = heightAt(camera.position.x, camera.position.z) + 1.8;
     camera.position.y = Math.max(camera.position.y, floor);
-    controls.target.copy(intro.look0).lerp(intro.end.target, smoothstep(0.3, 1, raw));
+    controls.target.copy(intro.look.getPoint(t));
     camera.lookAt(controls.target);
     if (raw >= 1) {
       intro = null;
+      hideSign();
       mode = 'overview';
       [controls.minDistance, controls.maxDistance] = [22, 95];
       limitAround(overviewPose());
@@ -353,8 +436,34 @@ export function createRanchScene({
   function skipIntro() {
     if (!intro) return;
     intro = null;
+    hideSign();
     overview();
     onIntroEnd();
+  }
+
+  function hideSign() {
+    if (sign) sign.layer.domElement.hidden = true;
+  }
+
+  /**
+   * Fade the sign in once the camera has turned onto the drive's line (from the road, trees
+   * would stand in front of it), and out as the camera passes under.
+   */
+  function updateSign() {
+    const { object, facing } = sign;
+    // the lettering is centred on the object: stand its lower edge SIGN_CLEAR above the drive
+    object.position.y = sign.ground + SIGN_CLEAR + (object.element.offsetHeight * object.scale.y) / 2;
+    tmp.subVectors(camera.position, object.position);
+    const dist = tmp.length();
+    const short = tmp.x * facing.x + tmp.z * facing.z; // how far short of the sign the camera still is
+    const aside = Math.abs(tmp.x * facing.z - tmp.z * facing.x); // and how far off the drive's line
+    camera.getWorldDirection(fwd);
+    const facingIt = -tmp.dot(fwd) / dist;
+    const show = smoothstep(0.55, 0.75, facingIt) * smoothstep(10, 6.5, aside)
+      * (1 - smoothstep(48, 64, dist)) * smoothstep(0.4, 1.6, short);
+    object.visible = show > 0.01;
+    object.element.style.opacity = show.toFixed(3);
+    sign.layer.render(sign.signScene, camera);
   }
 
   // --- picking ---------------------------------------------------------------------
@@ -400,6 +509,8 @@ export function createRanchScene({
     down = null;
     if (moved > 6 || !quick || tween) return;
     setPointer(e);
+    raycaster.setFromCamera(pointer, camera);
+    if (raycaster.intersectObject(scopeHit, false).length) return onEasterEgg('aurora');
     const id = pick();
     if (id) onSelect(id);
   });
@@ -407,7 +518,7 @@ export function createRanchScene({
   controls.addEventListener('start', () => { idle = 0; });
 
   // --- frame loop ------------------------------------------------------------------
-  const tmp = new THREE.Vector3();
+  const tmp = new THREE.Vector3(), fwd = new THREE.Vector3();
   const clock = new THREE.Clock();
   let elapsed = 0, readySent = false, slow = 0;
 
@@ -424,12 +535,13 @@ export function createRanchScene({
     }
   }
 
-  applyState(current);
+  showSky();
   camera.position.copy(OVERVIEW.pos);
   controls.target.copy(OVERVIEW.target);
   camera.lookAt(controls.target);
 
   let manualDt = null; // set by debug.advance() to step the loop deterministically
+  let weatherSettle = 0;
   function frame() {
     const raw = manualDt ?? clock.getDelta();
     const dt = Math.min(raw, 0.05);
@@ -448,9 +560,9 @@ export function createRanchScene({
 
     if (blend) {
       const before = blend.t;
-      blend.t = Math.min(1, blend.t + dt / 1.6);
+      blend.t = Math.min(1, blend.t + dt / blend.duration);
       blendInto(current, blend.from, blend.to, easeInOutSine(blend.t));
-      applyState(current);
+      skyDirty = true;
       if ((before < 0.5 && blend.t >= 0.5) || blend.t >= 1) reflectionsDirty = true;
       if (blend.t >= 1) blend = null;
     }
@@ -492,6 +604,16 @@ export function createRanchScene({
       setHovered(pick());
     }
 
+    // weather follows the camera; re-light the scene while it changes, and refresh the
+    // Airstream's reflections once it settles
+    if (weather.tick(dt, elapsed, camera)) {
+      skyDirty = true;
+      weatherSettle = 0.5;
+    } else if (weatherSettle > 0 && (weatherSettle -= dt) <= 0) {
+      reflectionsDirty = true;
+    }
+    if (skyDirty) showSky();
+
     sky.position.copy(camera.position);
     for (const id of Object.keys(rings)) {
       const hot = hovered === id || highlighted === id;
@@ -502,9 +624,10 @@ export function createRanchScene({
     // the first capture waits a frame so the shadow maps exist
     if (reflectionsDirty && readySent) captureReflections();
     renderer.render(scene, camera);
+    if (intro && sign) updateSign();
     updateMarkers();
     camera.getWorldDirection(tmp);
-    onHeading((THREE.MathUtils.radToDeg(Math.atan2(tmp.z, tmp.x)) + 360) % 360);
+    onHeading((THREE.MathUtils.radToDeg(Math.atan2(tmp.x, -tmp.z)) + 360) % 360); // north is -z
 
     if (!readySent) {
       readySent = true;
@@ -519,6 +642,19 @@ export function createRanchScene({
     playIntro,
     skipIntro,
     setTimeOfDay,
+    setTimeMix,
+    setWeather,
+    /** Northern lights on or off (they only show after dark). */
+    setAurora(on) {
+      aurora.set(on);
+      weatherSettle = 5; // catch them in the Airstream's reflections once they're up
+    },
+    get aurora() { return aurora.on; },
+    /** Dress the ranch for the holidays in `h`, e.g. { christmas: true } (see holidays.js). */
+    setHolidays(h) {
+      for (const p of parts) p.setHolidays?.(h);
+      weatherSettle = 1; // lights near the Airstream belong in its reflections
+    },
     setInset(right = 0, bottom = 0) {
       insetGoal.right = right;
       insetGoal.bottom = bottom;
@@ -526,7 +662,7 @@ export function createRanchScene({
     setHighlight(id) { highlighted = id; },
     get mode() { return mode; },
     debug: {
-      renderer, scene, camera, controls, OVERVIEW, views,
+      renderer, scene, camera, controls, OVERVIEW, views, weather,
       get pixelRatio() { return renderer.getPixelRatio(); },
       /** Run the frame loop for `seconds` of simulated time (for testing in hidden tabs). */
       advance(seconds, step = 1 / 30) {

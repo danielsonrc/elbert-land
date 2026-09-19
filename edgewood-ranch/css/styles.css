@@ -183,6 +183,14 @@ body:is([data-view="loading"], [data-view="intro"]) .stays { transform: translat
 .tod__buttons button:hover { background: rgba(255, 243, 223, 0.14); }
 .tod__buttons button[aria-pressed="true"] { background: var(--cream); color: #3a2030; }
 .tod__buttons svg { width: 22px; height: 22px; }
+/* the + that opens the weather row sits apart from the times, and turns to an x when open */
+.tod__buttons [data-toggle] { margin-left: 4px; box-shadow: inset 1px 0 0 rgba(255, 243, 223, 0.18); border-radius: 0 999px 999px 0; }
+.tod__buttons [data-toggle] svg { transition: transform 0.3s var(--ease); }
+.tod__buttons [data-toggle][aria-expanded="true"] svg { transform: rotate(45deg); }
+.tod__weather[hidden] { display: none; }
+/* Live pulses gently, like an on-air light */
+.tod__buttons button[aria-pressed="true"] circle[fill="currentColor"] { animation: on-air 2.4s ease-in-out infinite; }
+@keyframes on-air { 50% { opacity: 0.35; } }
 .topbar__link {
   align-self: flex-end;
   padding: 11px 16px;
@@ -217,6 +225,12 @@ body:is([data-view="loading"], [data-view="intro"]) .stays { transform: translat
 }
 .compass__rose { position: absolute; inset: 0; transition: transform 0.08s linear; }
 .compass__rose svg { width: 100%; height: 100%; }
+/* drawn in theme colours so the dial reads on both the paper and the night navy */
+.compass__ticks { stroke: var(--ink-3); }
+.compass__south { fill: var(--ink); opacity: 0.85; }
+.compass__north { fill: var(--rust); }
+.compass__pin { fill: var(--paper); stroke: var(--ink); }
+.compass__letters { fill: var(--ink); }
 .compass__needle {
   position: absolute;
   left: 50%;
@@ -227,10 +241,18 @@ body:is([data-view="loading"], [data-view="intro"]) .stays { transform: translat
   border: 5px solid transparent;
   border-top: 9px solid var(--rust);
 }
-.compass__bearing {
+.compass__bearing, .compass__scale {
   font: 800 12px/1 var(--display);
   letter-spacing: 0.18em;
+  white-space: nowrap;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+}
+.compass__scale {
+  margin-top: -3px;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.8;
 }
 .hint {
   margin: 0 0 18px;
@@ -413,34 +435,53 @@ body[data-stay="airstream"] .marker[data-stay="airstream"] { opacity: 0; pointer
   70%, 100% { transform: scale(1.6); opacity: 0; }
 }
 
-/* --- intro title card & skip ------------------------------------------------------------------ */
-.intro-title {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-content: center;
+/* --- the entrance sign & skip --------------------------------------------------------------------- */
+/* The ranch's name as the big sign over the drive. scene.js hangs this in the world with CSS 3D
+   transforms (1200px across here is SIGN_PX there), so the arrival drives right underneath it. */
+.entrance-sign { display: none; }
+.sign-layer { position: fixed; inset: 0; pointer-events: none; }
+.sign-layer .entrance-sign {
+  --rim: rgba(255, 224, 178, 0.8);
+  display: block;
+  width: 1200px;
   text-align: center;
+  color: #2a1a14; /* cut steel, dark against the sky */
+}
+.entrance-sign__welcome {
+  margin: 0 0 10px;
+  font: 600 88px/1 var(--hand);
   color: var(--cream);
-  pointer-events: none;
-  opacity: 0;
-  text-shadow: 0 4px 30px rgba(30, 8, 20, 0.5);
+  text-shadow: 0 4px 24px rgba(30, 8, 20, 0.6);
 }
-.intro-title p {
+.entrance-sign__name {
   margin: 0;
-  font: 600 30px/1 var(--hand);
+  font: 900 196px/0.84 var(--display);
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  /* sunlight catching the tops of the letters, and a soft shadow to lift them off the trees */
+  text-shadow: 0 -5px 0 var(--rim), 0 16px 34px rgba(20, 6, 2, 0.42);
 }
-.intro-title h2 {
-  margin: 0;
-  font: 900 clamp(56px, 11vw, 150px)/0.85 var(--display);
-  letter-spacing: 0.03em;
+.entrance-sign__loc {
+  display: inline-block;
+  margin: 18px 0 0;
+  padding: 16px 40px 14px 58px; /* the extra left pad balances the trailing letter-spacing */
+  border-radius: 10px;
+  background: #2a1a14;
+  box-shadow: 0 -5px 0 var(--rim), 0 16px 34px rgba(20, 6, 2, 0.42);
+  color: var(--cream);
+  font: 800 48px/1 var(--display);
+  letter-spacing: 0.4em;
   text-transform: uppercase;
 }
-body[data-view="intro"] .intro-title { animation: title-card 5.4s var(--ease) 0.3s both; }
-@keyframes title-card {
-  0% { opacity: 0; transform: translateY(14px); letter-spacing: 0.12em; }
-  22%, 62% { opacity: 1; transform: none; }
-  100% { opacity: 0; transform: translateY(-10px); }
+/* a narrow screen sees less of the drive: stack the name so the whole sign fits */
+@media (max-aspect-ratio: 1/1) {
+  .sign-layer .entrance-sign { width: 740px; }
+  .entrance-sign__name { white-space: normal; line-height: 0.9; }
 }
+/* after dark the letters are lit */
+body[data-tod="night"] .sign-layer .entrance-sign { --rim: transparent; color: #fff1d8; }
+body[data-tod="night"] .entrance-sign__name { text-shadow: 0 0 6px rgba(255, 206, 150, 0.7), 0 0 38px rgba(255, 170, 90, 0.55); }
 .skip {
   position: fixed;
   right: var(--gutter);
@@ -522,6 +563,7 @@ noscript p {
   .topbar { top: auto; bottom: calc(var(--gutter) + 132px); right: var(--gutter); }
   .tod__label, .topbar__link { display: none; }
   .tod__buttons button { width: 36px; height: 36px; }
+  .tod__weather { order: -1; } /* opens upward, so the time row stays under your thumb */
   body[data-view="stay"] .topbar, body[data-view="stay"] .hud-bottom { opacity: 0; visibility: hidden; }
   .hud-bottom { bottom: calc(var(--gutter) + 132px); }
   .compass__dial { width: 56px; height: 56px; }
@@ -536,6 +578,28 @@ noscript p {
   .stay-card__meta { flex-wrap: wrap; font-size: 12px; }
   .stay-card__meta > svg, .stay-card__meta > .dot, .stay-card__meta > span:first-of-type { display: none; }
   .marker__label b { font-size: 15px; }
+}
+
+/* --- a passing note (the northern lights say hello here) ------------------------------------------ */
+.toast {
+  position: fixed;
+  top: calc(var(--gutter) + 70px);
+  left: 50%;
+  z-index: 30;
+  width: min(440px, calc(100vw - 2 * var(--gutter)));
+  margin: 0;
+  translate: -50% 0;
+  font: 600 25px/1.1 var(--hand);
+  color: var(--cream);
+  text-align: center;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.65);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s, translate 0.6s var(--ease);
+}
+.toast.is-on { opacity: 1; translate: -50% 6px; }
+@media (min-width: 761px) {
+  body[data-view="stay"] .toast { left: calc((100vw - min(450px, 100vw - 32px) - 16px) / 2); }
 }
 
 @media (prefers-reduced-motion: reduce) {

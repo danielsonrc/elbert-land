@@ -26,6 +26,9 @@ export function money(n) {
   });
 }
 
+/** A rating to one decimal, rounded down so it never reads higher than Airbnb's. */
+export const stars = (score) => (Math.floor(score * 10 + 1e-9) / 10).toFixed(1);
+
 export const modeFor = (s) => (s.status === 'coming-soon' ? 'waitlist' : s.booking === 'airbnb' ? 'airbnb' : 'request');
 
 // Online (not localhost), the waitlist posts to Netlify Forms.
@@ -145,7 +148,7 @@ export const icon = (name) =>
   `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
 
 // --- panel ---------------------------------------------------------------------------
-export function createBookingPanel(root, { onClose, onSwap }) {
+export function createBookingPanel(root, { onClose, onSwap, onDates = () => {} }) {
   const $ = (name) => root.querySelector(`[data-bind="${name}"]`);
   const form = root.querySelector('form');
   const grid = $('grid');
@@ -163,6 +166,14 @@ export function createBookingPanel(root, { onClose, onSwap }) {
     return true;
   };
   const say = (msg) => { $('date-msg').textContent = msg; };
+  let lastDates = '';
+  /** Let the page know when check-in or check-out changes (it previews the season's weather). */
+  function datesChanged() {
+    const key = `${state.checkIn}|${state.checkOut}`;
+    if (key === lastDates) return;
+    lastDates = key;
+    onDates(state.checkIn, state.checkOut);
+  }
 
   function fillStay() {
     const s = stay();
@@ -194,7 +205,7 @@ export function createBookingPanel(root, { onClose, onSwap }) {
     $('rating').hidden = !s.rating;
     if (s.rating) {
       $('rating').href = s.airbnb;
-      $('rating-text').textContent = `${s.rating.score.toFixed(2)} · ${s.rating.reviews} reviews · ${s.rating.note} on Airbnb`;
+      $('rating-text').textContent = `${stars(s.rating.score)} · ${s.rating.reviews} reviews · ${s.rating.note} on Airbnb`;
     }
 
     photos = s.photos ?? [];
@@ -314,9 +325,10 @@ export function createBookingPanel(root, { onClose, onSwap }) {
     link.firstChild.textContent = a && b
       ? `Book ${tinyDate.format(fromKey(a))} – ${tinyDate.format(fromKey(b))} on Airbnb `
       : 'See prices & book on Airbnb ';
+    const after = 'Airbnb shows the total and handles payment and protection. Directions and check-in details come through Airbnb once you book.';
     $('airbnb-note').textContent = a && b
-      ? `${plural(nightsBetween(a, b), 'night')} for ${plural(state.guests, 'guest')}. Airbnb shows the total and handles payment and protection.`
-      : 'Pick dates to carry them over. Airbnb shows the total and handles payment and protection.';
+      ? `${plural(nightsBetween(a, b), 'night')} for ${plural(state.guests, 'guest')}. ${after}`
+      : `Pick dates to carry them over. ${after}`;
   }
 
   function renderPrice() {
@@ -372,6 +384,7 @@ export function createBookingPanel(root, { onClose, onSwap }) {
     }
     state.hover = null;
     paintRange();
+    datesChanged();
   }
 
   grid.addEventListener('click', (e) => {
@@ -413,6 +426,7 @@ export function createBookingPanel(root, { onClose, onSwap }) {
         state.checkIn = state.checkOut = null;
         say('Pick your check-in date.');
         paintRange();
+        datesChanged();
         grid.querySelector('.day:not([disabled]):not(.is-booked)')?.focus();
         break;
       case 'focus-out':
@@ -526,6 +540,7 @@ export function createBookingPanel(root, { onClose, onSwap }) {
     $('confirm').scrollIntoView({ block: 'start', behavior: 'smooth' });
     booked = bookedNights(s);
     state.checkIn = state.checkOut = null;
+    datesChanged();
     form.reset();
   }
 
@@ -545,6 +560,7 @@ export function createBookingPanel(root, { onClose, onSwap }) {
       if (a && booked.has(a)) state.checkIn = null;
       say(state.checkIn ? 'Now pick your check-out date.' : 'Pick your check-in date.');
     }
+    datesChanged();
   }
 
   return {

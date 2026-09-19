@@ -34,7 +34,7 @@ export const STAYS = {
     blurb:
       'A tiny glass A-frame at the north end of the property, tucked into the ponderosas. ' +
       'Watch the forest and the stars through floor-to-peak windows, soak in the hot tub under the pines, ' +
-      'and end the night with a movie on the projector. Elk, foxes and the odd coyote pass through.',
+      'and end the night with a movie on the projector. Deer and wild turkeys wander through.',
     sleeps: 4,
     facts: [
       ['bed', 'Loft double bed + sofa bed'],
@@ -123,9 +123,11 @@ export const STAY_ORDER = ['aframe', 'airstream'];
 export const CARD_ORDER = ['airstream', 'aframe'];
 
 // ---------------------------------------------------------------------------
-// Time-of-day palettes (sRGB hex). The world faces west (-z), toward the
-// mountains. `el` / `az` place the sun (or moon) in degrees: az 0 = due west,
-// +90 = north, 180 = east (behind the default camera).
+// Time-of-day palettes (sRGB hex). The default camera faces north (-z), out
+// over the meadow. `el` / `az` place the sun (or moon) in degrees: az 0 = due
+// north, -90 = west, +90 = east, 180 = south (behind the default camera). The sun
+// keeps to the real sky: up in the east-south-east, afternoon in the south-west,
+// down in the west-north-west.
 // `night` (0..1) drives window glow, string lights, fire tables and stars.
 // ---------------------------------------------------------------------------
 
@@ -134,7 +136,7 @@ export const PALETTES = {
     label: 'Dawn',
     skyTop: '#3e4a7a', skyMid: '#b98aa6', horizon: '#f4c7a1', fog: '#e8b9a2',
     ridge: '#5b4a6e',
-    sun: '#ffe2c2', sunI: 2.4, el: 7, az: 160, disc: 0.0,
+    sun: '#ffe2c2', sunI: 2.4, el: 7, az: 115, disc: 0.0,
     hemiSky: '#c2afd6', hemiGround: '#6b4f4a', hemiI: 1.9,
     stars: 0.12, night: 0.3,
   },
@@ -142,7 +144,7 @@ export const PALETTES = {
     label: 'Day',
     skyTop: '#3a73b3', skyMid: '#8fbfd9', horizon: '#dfe8dc', fog: '#cfdcd0',
     ridge: '#4d6c78',
-    sun: '#fff5e3', sunI: 3.4, el: 52, az: -55, disc: 0.0,
+    sun: '#fff5e3', sunI: 3.4, el: 52, az: -120, disc: 0.0,
     hemiSky: '#d3e6f2', hemiGround: '#7a6a4a', hemiI: 2.0,
     stars: 0, night: 0,
   },
@@ -150,7 +152,7 @@ export const PALETTES = {
     label: 'Golden hour',
     skyTop: '#4b2f63', skyMid: '#e0674a', horizon: '#fbb66a', fog: '#f0a266',
     ridge: '#6b2e3e',
-    sun: '#ffb877', sunI: 3.8, el: 12, az: 30, disc: 1.0,
+    sun: '#ffb877', sunI: 3.8, el: 12, az: -40, disc: 1.0,
     hemiSky: '#c9a0c0', hemiGround: '#4a3040', hemiI: 1.9,
     stars: 0, night: 0.4,
   },

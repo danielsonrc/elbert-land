@@ -44,8 +44,8 @@
       </symbol>
       <symbol id="poster-art" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
         <rect width="1600" height="900" fill="url(#poster-sky)"/>
-        <circle cx="1080" cy="505" r="92" fill="#ffd9a3"/>
-        <circle cx="1080" cy="505" r="150" fill="#ffd9a3" opacity=".16"/>
+        <circle cx="540" cy="505" r="92" fill="#ffd9a3"/>
+        <circle cx="540" cy="505" r="150" fill="#ffd9a3" opacity=".16"/>
         <path d="M0 560 120 500l90 30 110-80 80 40 120-70 90 50 90-40 120-50 80 60 110-40 110 60 120-50 110 60 110-40 140 50v420H0Z" fill="#d9776a"/>
         <path d="M0 640 90 600l90 20 120-60 90 40 90-30 120 50 120-60 80 30 130-50 110 60 110-30 110 40 120-50 120 40 100-20v320H0Z" fill="#a8465a"/>
         <path d="M0 720 140 680l120 20 160-50 140 40 140-30 160 40 140-30 180 40 140-40 160 30 120-20v220H0Z" fill="#6f2c47"/>
@@ -61,15 +61,22 @@
           <use href="#pine" x="1535" y="640" width="38" height="114"/>
         </g>
         <path d="M0 815c300-35 600-25 800-15s500-15 800 0v115H0Z" fill="#26111f"/>
-        <rect x="410" y="776" width="98" height="30" rx="15" fill="#26111f"/>
-        <rect x="438" y="784" width="22" height="8" rx="3" fill="#ffb45a"/>
-        <rect x="468" y="784" width="22" height="8" rx="3" fill="#ffb45a"/>
-        <path d="M884 799v-21h24v21Z" fill="#26111f"/>
-        <path d="M880 779l16-11 16 11Z" fill="#26111f"/>
-        <circle cx="896" cy="782" r="2" fill="#ffb45a"/>
+        <!-- the stays stand on the ground: their bases run into it (same colour, so no seam) -->
+        <g fill="#26111f">
+          <rect x="410" y="757" width="98" height="28" rx="14"/>
+          <circle cx="448" cy="787" r="5.5"/><circle cx="462" cy="787" r="5.5"/>
+          <path d="M506 777h16v3h-16ZM517 779h3v15h-3Z"/>
+        </g>
+        <rect x="438" y="766" width="22" height="8" rx="3" fill="#ffb45a"/>
+        <rect x="468" y="766" width="22" height="8" rx="3" fill="#ffb45a"/>
+        <g transform="translate(0 3.5)">
+          <path d="M884 804v-26h24v26Z" fill="#26111f"/>
+          <path d="M880 779l16-11 16 11Z" fill="#26111f"/>
+          <circle cx="896" cy="782" r="2" fill="#ffb45a"/>
+        </g>
         <path d="M1104 799 1128 714l24 85Z" fill="#26111f"/>
         <path d="M1118 799 1128 762l10 37Z" fill="#ffb45a"/>
-        <path d="M1082 799h92v-6h-92Z" fill="#26111f"/>
+        <path d="M1082 806h92v-13h-92Z" fill="#26111f"/>
         <g fill="#26111f">
           <use href="#pine" x="-10" y="660" width="70" height="210"/>
           <use href="#pine" x="300" y="700" width="50" height="150"/>
@@ -82,7 +89,7 @@
   </svg>
 
   <div class="poster" aria-hidden="true"><svg><use href="#poster-art"/></svg></div>
-  <canvas id="world" aria-label="3D view of the ranch meadow. Use the stay cards below, or press 1 or 2, to choose a stay."></canvas>
+  <canvas id="world" aria-label="An illustrated 3D view of the ranch meadow, not a map. Use the stay cards below, or press 1 or 2, to choose a stay."></canvas>
   <div class="atmos" aria-hidden="true"></div>
   <div id="markers" class="markers"></div>
 
@@ -93,9 +100,10 @@
   </header>
 
   <nav class="topbar" aria-label="Scene controls">
-    <div class="tod" role="group" aria-labelledby="tod-label">
-      <span id="tod-label" class="tod__label">Golden hour</span>
-      <div id="tod" class="tod__buttons"></div>
+    <div class="tod">
+      <span id="sky-label" class="tod__label">Live</span>
+      <div id="tod" class="tod__buttons" role="group" aria-label="Time of day"></div>
+      <div id="weather" class="tod__buttons tod__weather" role="group" aria-label="Weather" hidden></div>
     </div>
     <a id="contact" class="topbar__link" href="#">Contact</a>
   </nav>
@@ -105,21 +113,23 @@
       <div class="compass__dial">
         <div id="compass-rose" class="compass__rose">
           <svg viewBox="0 0 100 100">
-            <g stroke="#8a7465" stroke-width="1.4">
+            <g class="compass__ticks" stroke-width="1.4">
               <path d="M50 6v6M50 88v6M6 50h6M88 50h6"/>
               <path d="M81.1 18.9l-3 3M18.9 81.1l3-3M18.9 18.9l3 3M81.1 81.1l-3-3" stroke-width="1"/>
             </g>
-            <path d="M50 26 55 50 50 74 45 50Z" fill="#2b1c16" opacity=".85"/>
-            <path d="M50 26 55 50H45Z" fill="#c4492c"/>
-            <circle cx="50" cy="50" r="3" fill="#f5ead5" stroke="#2b1c16" stroke-width="1.5"/>
-            <g font-family="Big Shoulders Display, Arial Narrow, sans-serif" font-weight="900" font-size="13" text-anchor="middle" fill="#2b1c16">
+            <path class="compass__south" d="M50 26 55 50 50 74 45 50Z"/>
+            <path class="compass__north" d="M50 26 55 50H45Z"/>
+            <circle class="compass__pin" cx="50" cy="50" r="3" stroke-width="1.5"/>
+            <g class="compass__letters" font-family="Big Shoulders Display, Arial Narrow, sans-serif" font-weight="900" font-size="13" text-anchor="middle">
               <text x="50" y="23">N</text><text x="79" y="54.5">E</text><text x="50" y="86">S</text><text x="21" y="54.5">W</text>
             </g>
           </svg>
         </div>
         <span class="compass__needle"></span>
       </div>
-      <span id="compass-bearing" class="compass__bearing">W 270°</span>
+      <!-- the layout is true to the ranch, so the bearing is too, but the distances are squeezed -->
+      <span id="compass-bearing" class="compass__bearing">N 000°</span>
+      <span class="compass__scale">Not to scale</span>
     </div>
     <p class="hint">
       <span class="hint--pointer">Drag to look around. Click a stay to book it.</span>
@@ -132,15 +142,18 @@
     <div id="stay-cards" class="stay-cards"></div>
   </section>
 
-  <div class="intro-title" aria-hidden="true">
-    <p>welcome to</p>
-    <h2 data-ranch="name">Edgewood Ranch</h2>
+  <!-- the entrance sign: scene.js hangs it over the drive for the arrival -->
+  <div id="entrance-sign" class="entrance-sign" aria-hidden="true">
+    <p class="entrance-sign__welcome">welcome to</p>
+    <h2 class="entrance-sign__name" data-ranch="name">Edgewood Ranch</h2>
+    <p class="entrance-sign__loc" data-ranch="location">Peyton, Colorado</p>
   </div>
   <button id="skip-intro" class="skip" type="button">Skip intro</button>
+  <p id="toast" class="toast" role="status"></p>
 
   <aside id="panel" class="panel" aria-hidden="true" aria-labelledby="stay-name">
     <div class="panel__scroll">
-      <button class="panel__grab" type="button" data-expand aria-label="Expand booking panel"></button>
+      <button class="panel__grab" type="button" aria-expanded="false" aria-label="Expand booking panel"></button>
       <button class="panel__back" type="button" data-action="close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
         Back to the meadow

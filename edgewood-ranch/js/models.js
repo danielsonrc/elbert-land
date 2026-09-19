@@ -4,8 +4,8 @@
 import * as THREE from 'three';
 import { placeOnSite } from './world.js';
 import {
-  V, V2, box, beam, flatMat, glassMat, glowMat, stripeTexture, flameRow, slingChair,
-  stringLights, lantern, pineTree, paintedGlassTexture, wisps,
+  V, V2, box, beam, flatMat, glassMat, glowMat, stripeTexture, flameRow, slingChair, snowy,
+  stringLights, lantern, pineTree, paintedGlassTexture, inflatableSpa, gasGrill, pumpkin, XMAS,
 } from './kit.js';
 
 export function createAFrame() {
@@ -16,10 +16,10 @@ export function createAFrame() {
   const len = Math.hypot(W, H);
   const halfAt = (y, inset = 0.2) => (W - inset) * (1 - y / H);
 
-  const metal = new THREE.MeshLambertMaterial({
+  const metal = snowy(new THREE.MeshLambertMaterial({
     color: '#ffffff',
     map: stripeTexture('#40535a', '#314249', { repeat: [1, (D + 0.7) / 0.16], vertical: false, lineWidth: 0.35 }),
-  });
+  }));
   const cedar = flatMat('#b87440'), ply = flatMat('#dcbd8c'), iron = flatMat('#2a2d31');
   const glassTex = paintedGlassTexture();
   glassTex.repeat.set(1 / (halfAt(0) * 2), 1 / (H - 0.35));
@@ -100,9 +100,9 @@ export function createAFrame() {
   // --- raised deck with cable railing and front steps -----------------------------------------
   const dx0 = -4.5, dx1 = 4.5, dz0 = -3.5, dz1 = 6.0;
   const dw = dx1 - dx0, dd = dz1 - dz0, dcz = (dz0 + dz1) / 2;
-  const boards = new THREE.MeshLambertMaterial({
+  const boards = snowy(new THREE.MeshLambertMaterial({
     color: '#ffffff', map: stripeTexture('#8a5a38', '#744a2d', { repeat: [1, dd / 0.14], vertical: false, lineWidth: 0.12 }),
-  });
+  }));
   g.add(box(dw, 0.12, dd, boards, 0, F - 0.06, dcz));
   const skirt = new THREE.MeshLambertMaterial({
     color: '#ffffff', map: stripeTexture('#5d3c28', '#4a2f1f', { repeat: [1, (F + 0.5) / 0.18], vertical: false, lineWidth: 0.12 }),
@@ -178,14 +178,8 @@ export function createAFrame() {
     g.add(chair);
   };
 
-  const grill = new THREE.Group();
   const black = flatMat('#1f2023');
-  grill.add(box(0.9, 0.34, 0.55, black, 0, 0.82, 0));
-  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.9, 8, 1, false, 0, Math.PI), black);
-  lid.rotation.z = Math.PI / 2;
-  lid.position.y = 0.99;
-  grill.add(lid, box(0.36, 0.04, 0.45, flatMat('#4a4c52'), 0.66, 0.9, 0));
-  for (const x of [-0.38, 0.38]) for (const z of [-0.22, 0.22]) grill.add(box(0.04, 0.66, 0.04, black, x, 0.33, z));
+  const grill = gasGrill();
   grill.position.set(3.75, F, -2.45);
   grill.rotation.y = -Math.PI / 2;
   g.add(grill);
@@ -227,29 +221,10 @@ export function createAFrame() {
   g.add(scope);
 
   // --- the round hot tub, off the deck and under the pines -------------------------------------
-  const tub = new THREE.Group();
-  const pad = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.7, 0.06, 18), flatMat('#9d9080'));
-  pad.position.y = 0.03;
-  pad.receiveShadow = true;
-  const shell = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.68, 24), flatMat('#8b8884'));
-  shell.position.y = 0.37;
-  shell.castShadow = true;
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.11, 6, 24), flatMat('#98948f'));
-  rim.rotation.x = Math.PI / 2;
-  rim.position.y = 0.72;
-  const water = new THREE.MeshLambertMaterial({ color: '#5aa9b5', emissive: '#58d6e6', emissiveIntensity: 0.05 });
-  const surface = new THREE.Mesh(new THREE.CircleGeometry(0.84, 24), water);
-  surface.rotation.x = -Math.PI / 2;
-  surface.position.y = 0.64;
-  const rope = glowMat('#ffcf86', '#6d604c');
-  const ropeRing = new THREE.Mesh(new THREE.TorusGeometry(1.04, 0.035, 5, 36), rope);
-  ropeRing.rotation.x = Math.PI / 2;
-  ropeRing.position.y = 0.1;
-  const steam = wisps(4, { rise: 1.4, size: 0.8, opacity: 0.3 });
-  steam.object.position.y = 0.7;
-  tub.add(pad, shell, rim, surface, ropeRing, steam.object);
-  tub.position.set(6.35, 0, -0.7);
-  g.add(tub);
+  // an inflatable spa like the real one, right on the grass
+  const spa = inflatableSpa();
+  spa.object.position.set(6.35, 0, -0.7);
+  g.add(spa.object);
   for (const [x, z, s] of [[7.7, -3.3, 1.2], [5.1, -4.3, 0.95], [9.3, -1.5, 1.3]]) {
     const tree = pineTree(s);
     tree.position.set(x, -0.1, z);
@@ -266,6 +241,37 @@ export function createAFrame() {
     g.add(s);
   }
 
+  // --- holidays, switched on by setHolidays() -----------------------------------------------------
+  // Christmas: coloured lights outlining the front of the A, and wound round the tallest pine by
+  // the tub. Fall: pumpkins by the steps and along the path to the tub.
+  const christmas = new THREE.Group();
+  const zEdge = (D + 0.7) / 2 + 0.05;
+  const roofLights = stringLights(
+    [V(-2.8, F + 0.1, zEdge), V(0, F + H + 0.26, zEdge), V(2.8, F + 0.1, zEdge)],
+    { sag: 0.02, spacing: 0.4, bulb: 0.06, colors: XMAS },
+  );
+  const coil = [];
+  const [tx, tz, ts] = [9.3, -1.5, 1.3];
+  for (let i = 0; i <= 72; i++) {
+    const k = i / 72, a = k * Math.PI * 9;
+    const r = (1.9 * (1 - k) + 0.2) * ts;
+    coil.push(V(tx + Math.cos(a) * r, (3.1 + 6.2 * k) * ts - 0.1, tz + Math.sin(a) * r));
+  }
+  const treeLights = stringLights(coil, { sag: 0, spacing: 0.5, bulb: 0.07, colors: XMAS });
+  christmas.add(roofLights.object, treeLights.object);
+  const fall = new THREE.Group();
+  for (const [x, z, size, color] of [
+    [-1.35, dz1 + 0.3, 0.27, '#d9772b'], [-1.3, dz1 + 0.78, 0.19, '#e9ddc5'], [1.38, dz1 + 0.45, 0.23, '#c96a26'],
+    [5.3, 1.9, 0.28, '#d9772b'], [5.75, 2.35, 0.17, '#8f9c6a'],
+  ]) {
+    const p = pumpkin(size, color);
+    p.position.set(x, 0, z);
+    p.rotation.y = x * 2.3;
+    fall.add(p);
+  }
+  christmas.visible = fall.visible = false;
+  g.add(christmas, fall);
+
   const interior = new THREE.PointLight('#ffb866', 0, 9, 2);
   interior.position.set(0, F + 1.9, 0.3);
   g.add(interior);
@@ -278,23 +284,29 @@ export function createAFrame() {
     // orbit stops before the hot tub pines fill the view
     view: { target: V(1.2, 2.8, 1), camera: V(9.4, 4.6, 16.4), orbit: [-1, 0.55] },
     hitBox: { size: [13.4, 8.8, 11.4], center: V(1.4, 4.2, 1.3) },
+    telescope: scope,
+    setHolidays(h) {
+      christmas.visible = Boolean(h.christmas);
+      fall.visible = Boolean(h.fall);
+    },
     update(p) {
       night = p.night;
       glass.emissiveIntensity = night ** 1.5 * 0.9;
       glass.opacity = 0.82 - night * 0.3;
       lamp.emissiveIntensity = night * 2.2;
-      rope.emissiveIntensity = night * 2.4;
-      water.emissiveIntensity = 0.05 + night * 0.9;
+      spa.water.emissiveIntensity = 0.05 + night * 0.9;
       movie.emissiveIntensity = night * 0.9;
       lanternGlow.emissiveIntensity = night * 2.2;
       interior.intensity = night * 16;
       deckLights.setNight(night);
       deckLights2.setNight(night);
+      roofLights.setNight(night);
+      treeLights.setNight(night);
     },
     tick(t) {
       flames.tick(t, night);
       fireLight.intensity = (1.2 + night * 12) * (0.85 + 0.15 * Math.sin(t * 11) * Math.sin(t * 7.3));
-      steam.tick(t, 0.35 + night * 0.65);
+      spa.steam.tick(t, 0.35 + night * 0.65);
     },
   };
 }

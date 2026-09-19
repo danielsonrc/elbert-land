@@ -1,5 +1,6 @@
 // Procedural land: noise, layout, terrain, sky dome and layered ridgelines.
 import * as THREE from 'three';
+import { snowy } from './kit.js';
 
 // --- small math helpers ------------------------------------------------------
 export const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -44,40 +45,109 @@ export function fbm(x, z, octaves = 4) {
 }
 
 // --- layout ------------------------------------------------------------------
-// The default camera looks west (-z) across the meadow toward the mountains.
-// The Airstream sits front-left; the A-frame is set back on the right, against the trees.
+// An impression of the real ranch, not a map: the arrangement is true but the distances are
+// squeezed. North is -z and east +x, so the default camera stands at the south end of the
+// meadow looking north. The Airstream sits on the left, the A-frame is set back on the right
+// against the trees, and the bath house is between them, behind a small stand of trees
+// that keeps each stay private.
 export const SITES = {
   aframe: { x: 16, z: -15, rot: -0.3, pad: 12 },
   airstream: { x: -14, z: 4, rot: 1.1, pad: 16 },
 };
-// The A-frame's bath house, a short walk west of its side steps
-export const BATH = { x: 2.5, z: -17, rot: -0.05, pad: 5 };
+export const BATH = { x: 1.6, z: -18.2, rot: -0.05, pad: 5 };
+// The small stand of pines and firs between the stays, like the real one: it screens each stay
+// from the other, and the path to the bath house runs through a gap in it. [x, z, kind, scale]
+export const PRIVACY_STAND = [
+  [-2.8, -8.2, 'fir', 1.05], [-4.6, -11.4, 'fir', 0.9], [-1.6, -12, 'pine', 1.1], [-3.4, -14.8, 'pine', 1],
+  [4.9, -9.6, 'fir', 1], [5.2, -12.2, 'pine', 1.15], [7.2, -13.4, 'fir', 0.85],
+];
 export const LOOKOUT = { x: 104, z: -126 };
-export const GATE = { x: 4, z: 80 };
+// Where the drive leaves the county road, and the old stake-bed truck parked in the grass on
+// the right coming in, nosed toward the drive so arrivals see it front-on
+export const ENTRANCE = { x: -62, z: 86 };
+export const TRUCK = { x: -19.1, z: 62, rot: -1.92, pad: 5 };
 // Stands of trees that crowd in close to the stays: [x, z, radius]
 export const GROVES = [[27, -31, 16], [37, -9, 10], [-30, -12, 12], [-43, 9, 10]];
 // Kept clear of trees so the default camera sees the meadow
 export const inViewCorridor = (x, z) => z > 20 && z < 76 && Math.abs(x - 1) < 9;
 
-const TRAIL = [
-  [[5, 120], [3, 44]],
-  [[3, 44], [-1, 18]],
-  [[-1, 18], [-8.5, 7.3]], // Airstream deck steps
-  [[-1, 18], [13.5, -6.9]], // A-frame front steps
-  [[11.3, -3.2], [2.3, -14.7]], // off the A-frame path to the bath house
-];
-
-function segDist(px, pz, [ax, az], [bx, bz]) {
-  const dx = bx - ax, dz = bz - az;
-  const t = clamp(((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz), 0, 1);
-  return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
+/** A smooth line through `points` ([x, z] pairs), as straight pieces about `step` long. */
+function smoothPath(points, step = 1.5) {
+  const curve = new THREE.CatmullRomCurve3(points.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
+  return curve.getSpacedPoints(Math.max(1, Math.ceil(curve.getLength() / step))).map((p) => [p.x, p.z]);
 }
 
+// The drive, the way it really runs: in off the county road at the south-west corner, north-east
+// through the pines past the truck, then round the meadow in a loop. One branch runs north past
+// the Airstream and on to the A-frame, the other cuts straight across to it.
+export const DRIVE = smoothPath([
+  [-62, 86], [-55, 84.4], [-46, 80.8], [-36.5, 74], [-28.5, 64.8], [-21.5, 53.5], [-15.5, 42.5], [-10.5, 32],
+]);
+const WEST_BRANCH = smoothPath([[-10.5, 32], [-8, 22], [-5, 14], [-2.4, 6], [1, 0], [6, -3.6], [10.8, -5.1], [14.2, -5.4]]);
+const EAST_BRANCH = smoothPath([[-10.5, 32], [-3, 26.4], [4.4, 19.8], [10.3, 11.6], [14.2, 3.2], [15.4, -1.8], [14.2, -5.4]]);
+// footpaths to the Airstream's deck, the A-frame's steps and the bath house
+const WALKS = [
+  smoothPath([[-5, 14], [-7, 10.4], [-8.5, 7.3]]),
+  smoothPath([[14.2, -5.4], [13.9, -7.7]]),
+  smoothPath([[3.4, -2.3], [2.6, -7], [2.0, -12], [1.75, -15.8]]),
+];
+// the gravel county road the drive turns off
+const ROAD = smoothPath([[-62, 214], [-63, 150], [-62, 86], [-60.5, 20], [-56, -40]], 3);
+// The old post-and-rail fence along the north line, behind both stays
+export const FENCE = smoothPath([
+  [-52, -24.5], [-38, -29.5], [-22, -33], [-8, -35], [6, -34.5], [20, -32.5], [34, -29.2], [47, -24.5],
+], 2.8);
+
+/** Straight pieces of a path with their bounds, `width` wide relative to the drive. */
+function segments(paths, width = 1) {
+  const out = [];
+  for (const p of paths) {
+    for (let i = 1; i < p.length; i++) {
+      const [ax, az] = p[i - 1], [bx, bz] = p[i];
+      out.push({
+        ax, az, bx, bz, width,
+        x0: Math.min(ax, bx), x1: Math.max(ax, bx), z0: Math.min(az, bz), z1: Math.max(az, bz),
+      });
+    }
+  }
+  return out;
+}
+const TRAIL = [...segments([DRIVE, WEST_BRANCH, EAST_BRANCH]), ...segments(WALKS, 0.65)];
+const ROAD_SEGS = segments([ROAD], 1.6);
+const FENCE_SEGS = segments([FENCE]);
+
+const FAR = 12; // nothing asks how far a path is beyond this
+/** Distance to the nearest of `segs`, measured in their widths. */
+function pathDistance(segs, x, z) {
+  let d = FAR;
+  for (const s of segs) {
+    const ex = Math.max(s.x0 - x, 0, x - s.x1), ez = Math.max(s.z0 - z, 0, z - s.z1);
+    if (ex * ex + ez * ez >= (d * s.width) ** 2) continue; // its bounds are already too far
+    const dx = s.bx - s.ax, dz = s.bz - s.az;
+    const t = clamp(((x - s.ax) * dx + (z - s.az) * dz) / (dx * dx + dz * dz), 0, 1);
+    d = Math.min(d, Math.hypot(x - (s.ax + dx * t), z - (s.az + dz * t)) / s.width);
+  }
+  return d;
+}
+
+/** How far to the drive or a footpath (in drive widths), wandering a little. */
 export function trailDistance(x, z) {
-  let d = Infinity;
-  for (const [a, b] of TRAIL) d = Math.min(d, segDist(x, z, a, b));
-  // let the trail wander a little
-  return d + fbm(x * 0.08, z * 0.08, 2) * 0.8;
+  return pathDistance(TRAIL, x, z) + fbm(x * 0.08, z * 0.08, 2) * 0.8;
+}
+export const roadDistance = (x, z) => pathDistance(ROAD_SEGS, x, z) + fbm(x * 0.05, z * 0.05, 2) * 0.25;
+export const fenceDistance = (x, z) => pathDistance(FENCE_SEGS, x, z);
+
+/** A point `dist` along the drive from the road, and the way the drive runs there. */
+export function alongDrive(dist) {
+  for (let i = 1; i < DRIVE.length; i++) {
+    const [ax, az] = DRIVE[i - 1], [bx, bz] = DRIVE[i];
+    const len = Math.hypot(bx - ax, bz - az);
+    if (dist <= len || i === DRIVE.length - 1) {
+      const t = Math.min(1, dist / len);
+      return { x: lerp(ax, bx, t), z: lerp(az, bz, t), dx: (bx - ax) / len, dz: (bz - az) / len };
+    }
+    dist -= len;
+  }
 }
 
 // Distance from the meadow's center, stretched toward the camera side so the
@@ -98,10 +168,9 @@ function baseHeight(x, z) {
   return h;
 }
 
-const PADS = [...Object.values(SITES), BATH];
+const PADS = [...Object.values(SITES), BATH, TRUCK];
 for (const s of PADS) s.y = baseHeight(s.x, s.z);
 LOOKOUT.y = baseHeight(LOOKOUT.x, LOOKOUT.z);
-GATE.y = baseHeight(GATE.x, GATE.z);
 
 /** Drop a model group onto its flattened pad. */
 export function placeOnSite(group, id) {
@@ -151,6 +220,7 @@ export function createTerrain() {
     c.lerp(needles, (1 - smoothstep(3.6, 8.4, Math.hypot(x - SITES.aframe.x, z - SITES.aframe.z))) * 0.55);
     c.lerp(needles, (1 - smoothstep(2.5, 4.5, Math.hypot(x - BATH.x, z - BATH.z))) * 0.5);
     c.lerp(gravel, (1 - smoothstep(6.5, 9.5, Math.hypot(x - air.x, z - air.z))) * 0.85);
+    c.lerp(gravel, 1 - smoothstep(1.2, 1.9, roadDistance(x, z)));
     c.lerp(dirt, 1 - smoothstep(0.9, 2.1, trailDistance(x, z)));
     c.multiplyScalar(1 + (rng() - 0.5) * 0.09);
     for (let k = 0; k < 3; k++) c.toArray(colors, (i + k) * 3);
@@ -159,7 +229,7 @@ export function createTerrain() {
 
   const mesh = new THREE.Mesh(
     geo,
-    new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }),
+    snowy(new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })),
   );
   mesh.receiveShadow = true;
   mesh.name = 'terrain';
